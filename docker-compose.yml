@@ -1,0 +1,151 @@
+version: "3.9"
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: pulpo-db
+    env_file: [.env]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: ${TZ}
+    ports: ["${POSTGRES_PORT}:5432"]
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    networks: [pulpo-net]
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pulpo-pgadmin
+    env_file: [.env]
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+      TZ: ${TZ}
+    ports: ["${PGADMIN_PORT}:80"]
+    depends_on:
+      db: { condition: service_healthy }
+    restart: unless-stopped
+    networks: [pulpo-net]
+
+  redis:
+    image: redis:7
+    container_name: pulpo-redis
+    ports: ["${REDIS_PORT}:6379"]
+    volumes: ["redisdata:/data"]
+    healthcheck:
+      test: ["CMD","redis-cli","ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    networks: [pulpo-net]
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: pulpo-qdrant
+    ports: ["${QDRANT_PORT}:6333"]
+    volumes: ["qdrantdata:/qdrant/storage"]
+    healthcheck:
+      test: ["CMD","wget","-qO-","http://localhost:6333/readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    networks: [pulpo-net]
+    profiles: ["with-qdrant"]
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: pulpo-ollama
+    ports: ["${OLLAMA_PORT}:11434"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    environment:
+      NVIDIA_VISIBLE_DEVICES: "all"
+      NVIDIA_DRIVER_CAPABILITIES: "compute,utility"
+      TZ: ${TZ}
+    volumes: ["ollamadata:/root/.ollama"]
+    healthcheck:
+      test: ["CMD","wget","-qO-","http://localhost:11434/api/tags"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+    networks: [pulpo-net]
+
+  n8n:
+    image: n8nio/n8n:1.80.1
+    container_name: pulpo-n8n
+    env_file: [.env]
+    environment:
+      N8N_HOST: ${N8N_HOST}
+      N8N_PORT: ${N8N_PORT}
+      N8N_PROTOCOL: ${N8N_PROTOCOL}
+      WEBHOOK_URL: ${WEBHOOK_URL}
+      GENERIC_TIMEZONE: ${TZ}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_SECURE_COOKIE: "false"
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: db
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB}
+      DB_POSTGRESDB_USER: ${POSTGRES_USER}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD}
+      QUEUE_BULL_REDIS_HOST: redis
+      QUEUE_BULL_REDIS_PORT: 6379
+      OLLAMA_BASE_URL: "http://ollama:11434"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports: ["${N8N_PORT}:${N8N_PORT}"]
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      ollama: { condition: service_healthy }
+    volumes: ["n8ndata:/home/node/.n8n"]
+    healthcheck:
+      test: ["CMD","wget","-qO-","http://localhost:${N8N_PORT}/"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+    networks: [pulpo-net]
+  worker:
+    image: python:3.11-slim
+    container_name: pulpo-worker
+    working_dir: /app
+    volumes:
+      - ./:/app:ro
+    environment:
+      DATABASE_URL: "postgresql://pulpo:pulpo@db:5432/pulpo"
+    command: >
+      sh -lc "pip install --no-cache-dir fastapi uvicorn psycopg[binary] pydantic &&
+              uvicorn worker_min:app --host 0.0.0.0 --port 8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [pulpo-net] 
+
+volumes:
+  dbdata: {}
+  redisdata: {}
+  qdrantdata: {}
+  ollamadata: {}
+  n8ndata: {}
+
+networks:
+  pulpo-net:
+    driver: bridge
