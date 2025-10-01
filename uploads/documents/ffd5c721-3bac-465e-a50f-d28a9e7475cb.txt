@@ -1,0 +1,28 @@
+
+MENÚ RESTAURANTE EL PULPO
+
+EMPANADAS
+- Empanada de carne picante - $1.200
+- Empanada de jamón y queso - $1.200
+- Empanada de humita - $1.100
+- Empanada de pollo - $1.150
+
+PIZZAS
+- Pizza Margherita (chica/mediana/grande) - $3.500/$4.500/$5.500
+- Pizza Fugazza (chica/mediana/grande) - $3.200/$4.200/$5.200
+- Pizza Napolitana (chica/mediana/grande) - $3.800/$4.800/$5.800
+
+BEBIDAS
+- Coca Cola 500ml - $800
+- Agua mineral 500ml - $600
+- Cerveza Quilmes 473ml - $1.000
+
+POSTRES
+- Flan casero - $800
+- Tiramisú - $1.200
+- Helado 3 bochas - $900
+
+PROMOCIONES
+- Docena de empanadas: 10% descuento
+- Pizza + 2 empanadas: 15% descuento
+- Combo familiar (2 pizzas + 6 empanadas + 4 bebidas): 20% descuento

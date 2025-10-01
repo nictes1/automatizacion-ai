@@ -7,7 +7,8 @@ CREATE SCHEMA IF NOT EXISTS pulpo;
 CREATE TABLE IF NOT EXISTS pulpo.workspaces(
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
-  plan_tier text NOT NULL CHECK (plan_tier IN ('agent_basic','agent_pro','agent_premium', 'agent_custom')),  vertical text NOT NULL,
+  plan_tier text NOT NULL CHECK (plan_tier IN ('agent_basic','agent_pro','agent_premium', 'agent_custom')),
+  vertical text NOT NULL,
   settings_json jsonb DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now()
 );

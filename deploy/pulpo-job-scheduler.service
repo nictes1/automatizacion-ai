@@ -1,0 +1,31 @@
+[Unit]
+Description=Pulpo Job Scheduler
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+Environment=PYTHONUNBUFFERED=1
+Environment=SCHEDULER_POLL_INTERVAL=5
+Environment=SCHEDULER_MAX_CONCURRENCY=4
+WorkingDirectory=/home/nictes/workspace/nictes1/pulpo
+ExecStart=/home/nictes/workspace/nictes1/pulpo/.venv/bin/python -m services.job_scheduler
+Restart=always
+RestartSec=5
+User=nictes
+Group=nictes
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=pulpo-job-scheduler
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/home/nictes/workspace/nictes1/pulpo
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,33 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Instalar dependencias del sistema
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    libpq-dev \
+    tesseract-ocr \
+    tesseract-ocr-spa \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiar requirements
+COPY requirements.txt .
+
+# Instalar dependencias Python
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copiar código
+COPY core/ ./core/
+COPY services/ ./services/
+COPY utils/ ./utils/
+COPY auth/ ./auth/
+
+# Crear directorio de uploads
+RUN mkdir -p /app/uploads
+
+# Exponer puerto
+EXPOSE 8007
+
+# Comando de inicio
+CMD ["python", "-m", "uvicorn", "services.document_api_fixed:app", "--host", "0.0.0.0", "--port", "8007", "--reload"]
