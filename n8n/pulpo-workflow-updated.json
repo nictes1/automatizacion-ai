@@ -1,0 +1,1063 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"model\": \"llama3.1:8b\",\n  \"options\": { \"temperature\": 0.3 },\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"{{ $('Get Vertical Pack').item.json.pack_config[0].role_prompt }}\\n\\nIntención detectada: {{ $('Parse Intent').item.json.intent }}\\nConfianza: {{ $('Parse Intent').item.json.confidence }}\\n\\nHerramientas disponibles: {{ $('Get Tools').item.json.tools }}\\n\\nMensaje del usuario: \\\"{{ $('Parse Intent').item.json.user_text }}\\\"\\n\\nResponde de manera natural y útil. Si necesitás usar una herramienta, menciona que vas a consultar la información.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $('Parse Intent').item.json.user_text }}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1940,
+        2200
+      ],
+      "id": "92ca8d0a-cd43-4def-ae0a-664683a626d3",
+      "name": "Generate Response"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"model\": \"llama3.1:8b\",\n  \"format\": \"json\",\n  \"options\": { \"temperature\": 0.1 },\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Eres un clasificador de intenciones para un sistema de chat multi-vertical.\\n\\nVertical: {{ $json.vertical }}\\nIntenciones disponibles: {{ $('Get Vertical Pack').item.json.pack_config[0].intents_json }}\\n\\nAnaliza el siguiente mensaje del usuario y determina:\\n1. La intención más probable\\n2. El nivel de confianza (0.0 a 1.0)\\n3. Si requiere handoff humano\\n\\nMensaje: \\\"{{ $json.user_text }}\\\"\\n\\nResponde SOLO con un JSON válido:\\n{\\n  \\\"intent\\\": \\\"nombre_intencion\\\",\\n  \\\"confidence\\\": 0.85,\\n  \\\"requires_handoff\\\": false,\\n  \\\"reason\\\": \\\"razon_si_handoff\\\"\\n}\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $json.user_text }}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3520,
+        2180
+      ],
+      "id": "7334cd2e-846d-4be5-86b1-cbc217305c34",
+      "name": "Intent Router"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseCode": 500,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "message",
+                "value": "Error interno del servidor"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -4080,
+        2560
+      ],
+      "id": "4e0050f3-2b94-4c0f-87da-1e6d17e4c59f",
+      "name": "Error Response1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "error_message",
+              "name": "error_message",
+              "value": "Lo siento, hubo un error procesando tu mensaje. Por favor intentá de nuevo.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -4280,
+        2560
+      ],
+      "id": "f874b23c-5ab7-4eb3-b9e3-a8995d81484d",
+      "name": "Error Handler1"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "message",
+                "value": "Mensaje procesado exitosamente"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -840,
+        2200
+      ],
+      "id": "98552f13-e528-4023-912e-a05404704376",
+      "name": "Final Response1"
+    },
+    {
+      "parameters": {
+        "url": "https://api.twilio.com/2010-04-01/Accounts/{{ $vars.TWILIO_ACCOUNT_SID }}/Messages.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "twilioApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/x-www-form-urlencoded"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "To",
+              "value": "whatsapp:{{ $('Normalize Input').item.json.user_phone }}"
+            },
+            {
+              "name": "From",
+              "value": "whatsapp:{{ $('Resolve Channel').item.json.display_phone }}"
+            },
+            {
+              "name": "Body",
+              "value": "={{ $('Prepare Response1').item.json.response_text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1060,
+        2200
+      ],
+      "id": "6831cfa5-5ffc-4766-b53b-c93ee64d1a42",
+      "name": "Send Twilio1",
+      "credentials": {
+        "twilioApi": {
+          "id": "HlvtDJ92Rxni5at5",
+          "name": "Twilio account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT pulpo.update_conversation_flow($1, $2, 'completed', $3) AS flow_update;",
+        "options": {
+          "queryReplacement": "={{ $('Parse Intent1').item.json.workspace_id }}, {{ $('Parse Intent1').item.json.conversation_id }}, {{ JSON.stringify({intent: $('Parse Intent1').item.json.intent, response_type: $('Prepare Response1').item.json.response_type}) }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -1280,
+        2200
+      ],
+      "id": "9bcd5798-347c-4cc2-9602-f92da8e28934",
+      "name": "Update Flow1",
+      "credentials": {
+        "postgres": {
+          "id": "OyTVDgOjUgBqsKS6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT pulpo.persist_outbound($1, $2, $3, 'text', 'gpt-4o-mini', $4) AS message_id;",
+        "options": {
+          "queryReplacement": "={{ $('Parse Intent1').item.json.workspace_id }}, {{ $('Parse Intent1').item.json.conversation_id }}, {{ $json.response_text }}, {{ JSON.stringify({type: $json.response_type, intent: $('Parse Intent1').item.json.intent, confidence: $('Parse Intent1').item.json.confidence}) }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -1480,
+        2200
+      ],
+      "id": "ec574e8f-94d9-48fa-a085-c72b1bce8822",
+      "name": "Persist Response1",
+      "credentials": {
+        "postgres": {
+          "id": "OyTVDgOjUgBqsKS6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "response_text",
+              "name": "response_text",
+              "value": "={{ $json.message?.content || $json.content || 'Error generando respuesta' }}",
+              "type": "string"
+            },
+            {
+              "id": "response_type",
+              "name": "response_type",
+              "value": "ai_response",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1760,
+        2200
+      ],
+      "id": "ac2f804b-ea0e-442f-99e7-0a55296b5b26",
+      "name": "Prepare Response1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT pulpo.get_available_tools($1, $2) AS tools;",
+        "options": {
+          "queryReplacement": "={{ $('Parse Intent1').item.json.workspace_id }}, {{ $('Parse Intent1').item.json.vertical }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -2160,
+        2200
+      ],
+      "id": "0b82d350-4505-4dfc-83f8-83c31c53d43f",
+      "name": "Get Tools1",
+      "credentials": {
+        "postgres": {
+          "id": "OyTVDgOjUgBqsKS6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "response_text",
+              "name": "response_text",
+              "value": "={{ $('Check Slots1').item.json.slot_info[0].question }}",
+              "type": "string"
+            },
+            {
+              "id": "response_type",
+              "name": "response_type",
+              "value": "slot_question",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1760,
+        2380
+      ],
+      "id": "e4f2befe-3f11-47cb-9afa-8df04bf883db",
+      "name": "Slot Question Response1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT pulpo.init_conversation_slots($1, $2, $3, $4) AS slot_id;",
+        "options": {
+          "queryReplacement": "={{ $('Parse Intent1').item.json.workspace_id }}, {{ $('Parse Intent1').item.json.conversation_id }}, {{ $('Parse Intent1').item.json.intent }}, {{ JSON.stringify($('Get Vertical Pack1').item.json.pack_config[0].slots_config[$('Parse Intent1').item.json.intent]?.required || []) }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -2160,
+        2380
+      ],
+      "id": "2b095da3-f109-416a-b9d0-09ed85eb4d59",
+      "name": "Init Slots1",
+      "credentials": {
+        "postgres": {
+          "id": "OyTVDgOjUgBqsKS6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "slots-complete",
+              "leftValue": "={{ $json.slot_info[0].is_complete }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -2420,
+        2320
+      ],
+      "id": "7ca0678b-b5b9-45dd-87d1-fda8fd786a34",
+      "name": "Check Slots Complete1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT pulpo.get_next_slot_question($1, $2, $3) AS slot_info;",
+        "options": {
+          "queryReplacement": "={{ $json.workspace_id }}, {{ $json.conversation_id }}, {{ $json.intent }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -2620,
+        2320
+      ],
+      "id": "20b14374-a3a4-4a94-976e-9caac8ee3c98",
+      "name": "Check Slots1",
+      "credentials": {
+        "postgres": {
+          "id": "OyTVDgOjUgBqsKS6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT pulpo.init_conversation_flow($1, $2, 'processing') AS flow_id;",
+        "options": {
+          "queryReplacement": "={{ $json.workspace_id }}, {{ $json.conversation_id }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -2780,
+        2320
+      ],
+      "id": "5a13c275-507c-44b3-a05e-5f1f81137970",
+      "name": "Init Flow1",
+      "credentials": {
+        "postgres": {
+          "id": "OyTVDgOjUgBqsKS6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "response_text",
+              "name": "response_text",
+              "value": "Entiendo que necesitás hablar con un humano. Te voy a conectar con nuestro equipo que te va a ayudar mejor. Un momento por favor.",
+              "type": "string"
+            },
+            {
+              "id": "response_type",
+              "name": "response_type",
+              "value": "handoff",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1760,
+        2040
+      ],
+      "id": "c4465eaf-5419-472f-b8ad-54d7a2d79c02",
+      "name": "Handoff Response1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT pulpo.disable_automation($1, $2, $3) AS flow_id;",
+        "options": {
+          "queryReplacement": "={{ $json.workspace_id }}, {{ $json.conversation_id }}, {{ $json.reason || 'low_confidence' }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -2780,
+        2040
+      ],
+      "id": "ec0850d0-5241-49fc-af40-94c2e1fc6062",
+      "name": "Trigger Handoff1",
+      "credentials": {
+        "postgres": {
+          "id": "OyTVDgOjUgBqsKS6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "requires-handoff",
+              "leftValue": "={{ $json.requires_handoff }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "low-confidence",
+              "leftValue": "={{ $json.confidence }}",
+              "rightValue": 0.7,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -3000,
+        2180
+      ],
+      "id": "1950d66e-eeda-4a0c-9fb3-6a0432a08190",
+      "name": "Check Handoff1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT pulpo.record_intent_classification($1, $2, $3, $4, $5, $6, $7) AS classification_id;",
+        "options": {
+          "queryReplacement": "={{ $json.workspace_id }}, {{ $json.conversation_id }}, {{ $json.message_id }}, {{ $json.user_text }}, {{ $json.intent }}, {{ $json.confidence }}, {{ $json.vertical }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -3180,
+        2180
+      ],
+      "id": "b8f4d854-798c-47b6-9c16-bd8fccc5a88a",
+      "name": "Record Intent1",
+      "credentials": {
+        "postgres": {
+          "id": "OyTVDgOjUgBqsKS6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parsear respuesta del router (Ollama)\nconst routerResponse = $input.first().json.message?.content || $input.first().json.content || '{}';\nlet intentData;\n\ntry {\n  intentData = JSON.parse(routerResponse);\n} catch (error) {\n  // Fallback si no se puede parsear\n  intentData = {\n    intent: 'unknown',\n    confidence: 0.0,\n    requires_handoff: true,\n    reason: 'parse_error'\n  };\n}\n\n// Agregar datos del contexto\nreturn {\n  ...intentData,\n  workspace_id: $('Prepare Context1').item.json.workspace_id,\n  conversation_id: $('Prepare Context1').item.json.conversation_id,\n  message_id: $('Prepare Context1').item.json.message_id,\n  vertical: $('Prepare Context1').item.json.vertical,\n  user_text: $('Prepare Context1').item.json.user_text\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3340,
+        2180
+      ],
+      "id": "2a6eccfa-7a89-41b8-a4e5-b2a97d9e9ef1",
+      "name": "Parse Intent1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT pulpo.get_vertical_pack_config($1, $2) AS pack_config;",
+        "options": {
+          "queryReplacement": "={{ $json.workspace_id }}, {{ $json.vertical }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -3680,
+        2180
+      ],
+      "id": "a306de30-0c7c-429b-9201-ddc6dbed95fb",
+      "name": "Get Vertical Pack1",
+      "credentials": {
+        "postgres": {
+          "id": "OyTVDgOjUgBqsKS6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "workspace_id",
+              "name": "workspace_id",
+              "value": "={{ $('Get Workspace Config1').item.json.result[0] }}",
+              "type": "string"
+            },
+            {
+              "id": "conversation_id",
+              "name": "conversation_id",
+              "value": "={{ $('Persist Inbound1').item.json.result[0].conversation_id }}",
+              "type": "string"
+            },
+            {
+              "id": "message_id",
+              "name": "message_id",
+              "value": "={{ $('Persist Inbound1').item.json.result[0].message_id }}",
+              "type": "string"
+            },
+            {
+              "id": "vertical",
+              "name": "vertical",
+              "value": "={{ $('Get Workspace Config1').item.json.result[0].vertical }}",
+              "type": "string"
+            },
+            {
+              "id": "user_text",
+              "name": "user_text",
+              "value": "={{ $('Normalize Input1').item.json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -3880,
+        2360
+      ],
+      "id": "da7ae0e1-56d8-4a1c-8401-845877243963",
+      "name": "Prepare Context1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT pulpo.get_plan_vertical_settings($1, $2) AS result;",
+        "options": {
+          "queryReplacement": "={{ $('Resolve Channel1').item.json.ws_id }}, {{ $('Resolve Channel1').item.json.channel_id }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -4080,
+        2360
+      ],
+      "id": "0e397270-4378-45e2-bdc0-a62b278cbdaf",
+      "name": "Get Workspace Config1",
+      "credentials": {
+        "postgres": {
+          "id": "OyTVDgOjUgBqsKS6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT pulpo.persist_inbound($1, $2, $3, $4, $5) AS result;",
+        "options": {
+          "queryReplacement": "={{ $('Resolve Channel1').item.json.ws_id }}, {{ $('Resolve Channel1').item.json.channel_id }}, {{ $('Normalize Input1').item.json.user_phone }}, {{ $('Normalize Input1').item.json.wamid }}, {{ $('Normalize Input1').item.json.text }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -4280,
+        2360
+      ],
+      "id": "b148c861-e07d-409b-b008-1e2ea057031c",
+      "name": "Persist Inbound1",
+      "credentials": {
+        "postgres": {
+          "id": "OyTVDgOjUgBqsKS6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "channel-found",
+              "leftValue": "={{ $('Webhook Inbound1').item.json.body.Body }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -4480,
+        2460
+      ],
+      "id": "8e3a449b-8f91-460c-a22c-e34a215cc7b6",
+      "name": "Check Channel1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH input AS (\n  SELECT regexp_replace($1, '\\D', '', 'g')::text AS to_phone_digits\n)\nSELECT\n  c.id          AS channel_id,\n  c.workspace_id AS ws_id,\n  c.display_phone\nFROM pulpo.channels c, input i\nWHERE regexp_replace(c.display_phone, '\\D', '', 'g') = i.to_phone_digits\nLIMIT 1;",
+        "options": {
+          "queryReplacement": "={{ $json.to_phone }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -4680,
+        2460
+      ],
+      "id": "d895e46b-9b4c-45da-8f85-7a4a01ec1245",
+      "name": "Resolve Channel1",
+      "credentials": {
+        "postgres": {
+          "id": "OyTVDgOjUgBqsKS6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "user_phone",
+              "name": "user_phone",
+              "value": "={{($json.body?.WaId || $json.WaId || ($json.body?.From || '').split(':').pop()).replace('+','').replace(/\\D/g,'')}}",
+              "type": "string"
+            },
+            {
+              "id": "text",
+              "name": "text",
+              "value": "={{$json.body?.Body || $json.Body || ''}}",
+              "type": "string"
+            },
+            {
+              "id": "wamid",
+              "name": "wamid",
+              "value": "={{$json.body?.SmsSid || $json.SmsSid || 'SM_FALLBACK'}}",
+              "type": "string"
+            },
+            {
+              "id": "to_phone",
+              "name": "to_phone",
+              "value": "={{(($json.body?.To || $json.To) || '').split(':').pop().replace('+','').replace(/\\D/g,'')}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -4880,
+        2460
+      ],
+      "id": "acb09dfa-3571-4dbe-946f-2153c31cc8c5",
+      "name": "Normalize Input1"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pulpo/twilio/wa/inbound",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -5080,
+        2460
+      ],
+      "id": "cfc980f8-e441-4175-a545-caf113688958",
+      "name": "Webhook Inbound1",
+      "webhookId": "8353a880-638a-4f96-9028-6ba375f8f3d3"
+    }
+  ],
+  "connections": {
+    "Generate Response": {
+      "main": [
+        [
+          {
+            "node": "Prepare Response1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intent Router": {
+      "main": [
+        [
+          {
+            "node": "Parse Intent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Handler1": {
+      "main": [
+        [
+          {
+            "node": "Error Response1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Twilio1": {
+      "main": [
+        [
+          {
+            "node": "Final Response1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Flow1": {
+      "main": [
+        [
+          {
+            "node": "Send Twilio1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Response1": {
+      "main": [
+        [
+          {
+            "node": "Update Flow1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Response1": {
+      "main": [
+        [
+          {
+            "node": "Persist Response1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Tools1": {
+      "main": [
+        [
+          {
+            "node": "Generate Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slot Question Response1": {
+      "main": [
+        [
+          {
+            "node": "Persist Response1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Init Slots1": {
+      "main": [
+        [
+          {
+            "node": "Slot Question Response1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Slots Complete1": {
+      "main": [
+        [
+          {
+            "node": "Get Tools1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Init Slots1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Slots1": {
+      "main": [
+        [
+          {
+            "node": "Check Slots Complete1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Init Flow1": {
+      "main": [
+        [
+          {
+            "node": "Check Slots1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handoff Response1": {
+      "main": [
+        [
+          {
+            "node": "Persist Response1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger Handoff1": {
+      "main": [
+        [
+          {
+            "node": "Handoff Response1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Handoff1": {
+      "main": [
+        [
+          {
+            "node": "Trigger Handoff1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Init Flow1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Intent1": {
+      "main": [
+        [
+          {
+            "node": "Check Handoff1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Intent1": {
+      "main": [
+        [
+          {
+            "node": "Record Intent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Vertical Pack1": {
+      "main": [
+        [
+          {
+            "node": "Intent Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Context1": {
+      "main": [
+        [
+          {
+            "node": "Get Vertical Pack1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Workspace Config1": {
+      "main": [
+        [
+          {
+            "node": "Prepare Context1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Inbound1": {
+      "main": [
+        [
+          {
+            "node": "Get Workspace Config1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Channel1": {
+      "main": [
+        [
+          {
+            "node": "Persist Inbound1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Handler1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Channel1": {
+      "main": [
+        [
+          {
+            "node": "Check Channel1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Input1": {
+      "main": [
+        [
+          {
+            "node": "Resolve Channel1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Inbound1": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "29c8c096a9ab6d0837e1a4d415528a8bd401b99a6b36911436ee62ba3fbed3a0"
+  }
+}

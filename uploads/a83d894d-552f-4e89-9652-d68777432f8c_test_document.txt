@@ -1,0 +1,1 @@
+Este es un documento de prueba para el sistema PulpoAI. Contiene información sobre el procesamiento de archivos y la generación de embeddings. El sistema debe poder extraer este texto y convertirlo en embeddings para búsqueda semántica.

@@ -1,0 +1,169 @@
+version: '3.8'
+
+services:
+  # PostgreSQL con pgvector (base única)
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: pulpo-postgres-integrated
+    environment:
+      POSTGRES_DB: pulpo
+      POSTGRES_USER: pulpo
+      POSTGRES_PASSWORD: pulpo
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+      TZ: America/Argentina/Buenos_Aires
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./sql:/docker-entrypoint-initdb.d:ro
+      - postgres_integrated_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pulpo -d pulpo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Ollama para embeddings (sistema actual)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: pulpo-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Weaviate para vectores multimodales (RAG)
+  weaviate:
+    image: semitechnologies/weaviate:latest
+    container_name: pulpo-weaviate
+    ports:
+      - "8080:8080"
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
+      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
+      DEFAULT_VECTORIZER_MODULE: 'none'
+      GOMEMLIMIT: 1GiB
+      GOMAXPROCS: 2
+      CLUSTER_HOSTNAME: 'node1'
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/meta"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis para cache (RAG)
+  redis:
+    image: redis:7-alpine
+    container_name: pulpo-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  # n8n para automatización de workflows
+  n8n:
+    image: n8nio/n8n:1.80.1
+    container_name: pulpo-n8n
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678
+      - GENERIC_TIMEZONE=America/Argentina/Buenos_Aires
+      - N8N_ENCRYPTION_KEY=pulpo-n8n-encryption-key-2024
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_SECURE_COOKIE=false
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=pulpo
+      - DB_POSTGRESDB_USER=pulpo
+      - DB_POSTGRESDB_PASSWORD=pulpo
+      - QUEUE_BULL_REDIS_HOST=redis
+      - QUEUE_BULL_REDIS_PORT=6379
+      - OLLAMA_BASE_URL=http://ollama:11434
+    ports:
+      - "5678:5678"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    volumes:
+      - n8n_data:/home/node/.n8n
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5678/"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  # Worker RAG (sistema nuevo)
+  worker-rag:
+    build:
+      context: .
+      dockerfile: Dockerfile.rag
+    container_name: pulpo-worker-rag
+    ports:
+      - "8002:8002"
+    environment:
+      - DATABASE_URL=postgresql://pulpo:pulpo@postgres:5432/pulpo
+      - WEAVIATE_URL=http://weaviate:8080
+      - REDIS_URL=redis://redis:6379
+      - WORKER_PORT=8002
+    volumes:
+      - ./worker_rag.py:/app/worker_rag.py:ro
+      - ./requirements.rag.txt:/app/requirements.rag.txt:ro
+      - ./uploads:/app/uploads
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    depends_on:
+      - postgres
+      - weaviate
+      - redis
+      - ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+volumes:
+  postgres_integrated_data:
+  ollama_data:
+  weaviate_data:
+  redis_data:
+  n8n_data:

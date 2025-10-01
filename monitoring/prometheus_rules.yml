@@ -1,0 +1,74 @@
+groups:
+- name: ingestion.rules
+  rules:
+  - record: job:ing_files_error_rate5m
+    expr: sum by (job) (rate(ing_files_failed_total[5m])) / clamp_min(sum by (job) (rate(ing_files_uploaded_total[5m])), 1)
+  - record: job:ing_files_latency_p95
+    expr: histogram_quantile(0.95, sum by (le) (rate(ing_file_process_seconds_bucket[5m])))
+  - record: job:ing_files_latency_p99
+    expr: histogram_quantile(0.99, sum by (le) (rate(ing_file_process_seconds_bucket[5m])))
+  - record: job:ing_files_throughput
+    expr: sum by (job) (rate(ing_files_processed_total[5m]))
+
+groups:
+- name: ingestion.alerts
+  rules:
+  - alert: IngestionHighErrorRate
+    expr: job:ing_files_error_rate5m > 0.1
+    for: 10m
+    labels: 
+      severity: warning
+      service: ingestion
+    annotations:
+      summary: "Error rate alto en ingestion"
+      description: "Error rate >10% en los últimos 10m. Valor actual: {{ $value | humanizePercentage }}"
+
+  - alert: IngestionStuckProcessing
+    expr: (sum(max_over_time(ing_files_uploaded_total[30m])) - sum(max_over_time(ing_files_processed_total[30m]))) > 0
+    for: 30m
+    labels: 
+      severity: critical
+      service: ingestion
+    annotations:
+      summary: "Archivos subidos no se procesan"
+      description: "Hay {{ $value }} uploads sin matching de processed en 30m."
+
+  - alert: IngestionLatencyP95High
+    expr: job:ing_files_latency_p95 > 60
+    for: 15m
+    labels: 
+      severity: warning
+      service: ingestion
+    annotations:
+      summary: "P95 de procesamiento > 60s"
+      description: "Latencia p95 alta: {{ $value }}s en los últimos 15m."
+
+  - alert: IngestionLatencyP99High
+    expr: job:ing_files_latency_p99 > 120
+    for: 10m
+    labels: 
+      severity: critical
+      service: ingestion
+    annotations:
+      summary: "P99 de procesamiento > 120s"
+      description: "Latencia p99 crítica: {{ $value }}s en los últimos 10m."
+
+  - alert: IngestionNoThroughput
+    expr: job:ing_files_throughput == 0
+    for: 5m
+    labels: 
+      severity: critical
+      service: ingestion
+    annotations:
+      summary: "Sin throughput de procesamiento"
+      description: "No se han procesado archivos en los últimos 5 minutos."
+
+  - alert: IngestionServiceDown
+    expr: up{job="pulpo-ingestion"} == 0
+    for: 1m
+    labels: 
+      severity: critical
+      service: ingestion
+    annotations:
+      summary: "Servicio de ingestion caído"
+      description: "El servicio de ingestion no responde desde hace 1 minuto."

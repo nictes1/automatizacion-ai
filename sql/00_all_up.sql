@@ -18,3 +18,21 @@ SET search_path = public, pulpo;
 
 -- Plugins
 \i sql/06_plg_up.sql
+
+-- RAG
+\i sql/07_rag_up.sql
+
+-- Vertical Packs & Orchestrator
+\i sql/08_vertical_packs_up.sql
+
+-- Orchestrator Functions
+\i sql/09_orchestrator_functions.sql
+
+-- Vertical Packs Seed
+\i sql/10_vertical_packs_seed.sql
+
+-- File Management System (Improved)
+\i sql/11_file_management_improved.sql
+
+-- Raw Files System & Versions
+\i sql/12_raw_files_system_fixed.sql

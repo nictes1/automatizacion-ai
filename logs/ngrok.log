@@ -1,0 +1,30 @@
+t=2025-09-23T12:40:10-0300 lvl=info msg="no configuration paths supplied"
+t=2025-09-23T12:40:10-0300 lvl=info msg="using configuration at default config path" path=/home/nictes/.config/ngrok/ngrok.yml
+t=2025-09-23T12:40:10-0300 lvl=info msg="open config file" path=/home/nictes/.config/ngrok/ngrok.yml err=nil
+t=2025-09-23T12:40:10-0300 lvl=info msg="starting web service" obj=web addr=127.0.0.1:4040 allow_hosts=[]
+t=2025-09-23T12:40:10-0300 lvl=info msg="client session established" obj=tunnels.session
+t=2025-09-23T12:40:10-0300 lvl=info msg="tunnel session started" obj=tunnels.session
+t=2025-09-23T12:40:10-0300 lvl=info msg="started tunnel" obj=tunnels name=command_line addr=http://localhost:5678 url=https://f16652050054.ngrok-free.app
+t=2025-09-23T12:40:13-0300 lvl=info msg="update available" obj=updater
+t=2025-09-23T12:51:50-0300 lvl=info msg=start pg=/api/tunnels id=d62ac4fdc4868a4a
+t=2025-09-23T12:51:50-0300 lvl=info msg=end pg=/api/tunnels id=d62ac4fdc4868a4a status=200 dur=181.006µs
+t=2025-09-23T13:43:26-0300 lvl=info msg=start pg=/api/tunnels id=d40bce20be1cff36
+t=2025-09-23T13:43:26-0300 lvl=info msg=end pg=/api/tunnels id=d40bce20be1cff36 status=200 dur=135.042µs
+t=2025-09-23T13:44:50-0300 lvl=info msg="join connections" obj=join id=6d3fe1707f9c l=127.0.0.1:5678 r=107.21.70.204:47704
+t=2025-09-23T13:45:51-0300 lvl=info msg="join connections" obj=join id=e081d4281442 l=127.0.0.1:5678 r=54.80.144.75:38304
+t=2025-09-23T13:46:54-0300 lvl=info msg=start pg=/api/requests/http id=e0dd2ebc96895d83
+t=2025-09-23T13:46:54-0300 lvl=info msg=end pg=/api/requests/http id=e0dd2ebc96895d83 status=200 dur=233.775µs
+t=2025-09-23T13:48:51-0300 lvl=info msg=start pg=/api/requests/http id=cd3105b01ab2bde6
+t=2025-09-23T13:48:51-0300 lvl=info msg=end pg=/api/requests/http id=cd3105b01ab2bde6 status=200 dur=204.781µs
+t=2025-09-23T13:49:01-0300 lvl=info msg="join connections" obj=join id=daf0d5236dc0 l=127.0.0.1:5678 r=[2803:9800:9990:8f5d:435c:5aa4:94f1:cd36]:55844
+t=2025-09-23T13:53:23-0300 lvl=info msg="join connections" obj=join id=0f3a271a4195 l=127.0.0.1:5678 r=13.217.85.236:22686
+t=2025-09-23T13:55:04-0300 lvl=info msg=start pg=/api/requests/http id=22f442d61edc6647
+t=2025-09-23T13:55:04-0300 lvl=info msg=end pg=/api/requests/http id=22f442d61edc6647 status=200 dur=233.845µs
+t=2025-09-23T14:01:59-0300 lvl=info msg="join connections" obj=join id=a4d0a871d038 l=127.0.0.1:5678 r=[2803:9800:9990:8f5d:435c:5aa4:94f1:cd36]:55154
+t=2025-09-23T14:06:19-0300 lvl=info msg="join connections" obj=join id=d0af1b21afc6 l=127.0.0.1:5678 r=[2803:9800:9990:8f5d:435c:5aa4:94f1:cd36]:49154
+t=2025-09-23T14:06:25-0300 lvl=info msg=start pg=/api/requests/http id=fa46979e729a1f1d
+t=2025-09-23T14:06:25-0300 lvl=info msg=end pg=/api/requests/http id=fa46979e729a1f1d status=200 dur=184.112µs
+t=2025-09-23T18:40:14-0300 lvl=info msg="update available" obj=updater
+t=2025-09-24T00:40:14-0300 lvl=info msg="update available" obj=updater
+t=2025-09-24T01:19:08-0300 lvl=info msg="received stop request" obj=app stopReq="{err:<nil> restart:false}"
+t=2025-09-24T01:19:08-0300 lvl=info msg="session closing" obj=tunnels.session err=nil

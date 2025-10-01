@@ -1,0 +1,27 @@
+
+SERVICIOS PROFESIONALES - CONSULTORÍA TECNOLÓGICA
+
+SERVICIOS DE DESARROLLO
+- Desarrollo web personalizado - $150/hora
+  Incluye: Diseño, programación, testing, deploy
+  Tiempo estimado: 2-8 semanas según complejidad
+  
+- Desarrollo de aplicaciones móviles - $180/hora
+  Incluye: iOS, Android, backend, testing
+  Tiempo estimado: 4-12 semanas según funcionalidades
+  
+- Consultoría tecnológica - $200/hora
+  Incluye: Análisis, arquitectura, recomendaciones
+  Tiempo estimado: 1-4 semanas según proyecto
+
+HORARIOS DE ATENCIÓN
+- Lunes a Viernes: 9:00 - 18:00
+- Sábados: 9:00 - 13:00
+- Domingos: Cerrado
+- Consultas de emergencia: 24/7 (recargo 50%)
+
+POLÍTICAS DE SERVICIO
+- Pago: 50% adelanto, 50% al finalizar
+- Cancelaciones: 48hs de anticipación
+- Modificaciones: Sin costo hasta 50% del proyecto
+- Garantía: 90 días post entrega
