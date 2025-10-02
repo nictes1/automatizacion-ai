@@ -13,8 +13,8 @@ from dataclasses import dataclass
 from enum import Enum
 from decimal import Decimal, ROUND_HALF_UP
 from time import perf_counter
-from prometheus_client import Counter, Histogram, Gauge, CONTENT_TYPE_LATEST, generate_latest
-from starlette.responses import Response as StarletteResponse
+# from prometheus_client import Counter, Histogram, Gauge, CONTENT_TYPE_LATEST, generate_latest
+# from starlette.responses import Response as StarletteResponse
 from psycopg2.pool import SimpleConnectionPool
 from contextlib import contextmanager
 
@@ -34,51 +34,52 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# --- Prometheus metrics ---
-ACTIONS_REQUESTS = Counter(
-    "actions_requests_total",
-    "Requests totales por acción y resultado",
-    ["endpoint", "action", "result"]
-)
-
-ACTIONS_DURATION = Histogram(
-    "actions_duration_seconds",
-    "Duración de ejecución de acciones",
-    ["action", "result"],
-    buckets=(0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10)
-)
-
-HTTP_DURATION = Histogram(
-    "http_request_duration_seconds",
-    "Duración de requests HTTP por endpoint y código",
-    ["endpoint", "code"],
-    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5)
-)
-
-INFLIGHT = Gauge(
-    "http_inflight_requests",
-    "Requests HTTP en vuelo",
-    ["endpoint"]
-)
-
-POOL_IN_USE = Gauge(
-    "db_pool_in_use",
-    "Conexiones en uso del pool"
-)
+# --- Prometheus metrics (disabled for now) ---
+# ACTIONS_REQUESTS = Counter(
+#     "actions_requests_total",
+#     "Requests totales por acción y resultado",
+#     ["endpoint", "action", "result"]
+# )
+#
+# ACTIONS_DURATION = Histogram(
+#     "actions_duration_seconds",
+#     "Duración de ejecución de acciones",
+#     ["action", "result"],
+#     buckets=(0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10)
+# )
+#
+# HTTP_DURATION = Histogram(
+#     "http_request_duration_seconds",
+#     "Duración de requests HTTP por endpoint y código",
+#     ["endpoint", "code"],
+#     buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5)
+# )
+#
+# INFLIGHT = Gauge(
+#     "http_inflight_requests",
+#     "Requests HTTP en vuelo",
+#     ["endpoint"]
+# )
+#
+# POOL_IN_USE = Gauge(
+#     "db_pool_in_use",
+#     "Conexiones en uso del pool"
+# )
 
 # Pool de conexiones global
 DB_POOL: Optional[SimpleConnectionPool] = None
 
 def _pool_getconn():
     conn = DB_POOL.getconn()
-    POOL_IN_USE.inc()
+    # POOL_IN_USE.inc()
     return conn
 
 def _pool_putconn(conn):
     try:
         DB_POOL.putconn(conn)
     finally:
-        POOL_IN_USE.dec()
+        pass
+        # POOL_IN_USE.dec()
 
 @contextmanager
 def get_cursor(*, dict_cursor=False, workspace_id: Optional[str] = None):
@@ -220,7 +221,8 @@ def _money(x) -> float:
 
 def _with_cursor(cur):
     """Aplica statement timeout al cursor"""
-    cur.execute("SELECT set_statement_timeout()")
+    # cur.execute("SELECT set_statement_timeout()")  # Function doesn't exist in current schema
+    pass
 
 def build_context(
     request: Request,
@@ -290,9 +292,9 @@ class IdempotencyManager:
 
 class GastronomiaActions:
     """Acciones específicas para gastronomía"""
-    
+
     def __init__(self):
-        self.n8n_client = httpx.AsyncClient(timeout=30.0)
+        # self.n8n_client = httpx.AsyncClient(timeout=30.0)  # Not used currently
         self.n8n_base_url = os.getenv("N8N_BASE_URL", "http://localhost:5678")
     
     async def crear_pedido(self, payload: Dict[str, Any]) -> ActionResult:
@@ -390,7 +392,7 @@ class GastronomiaActions:
             with get_cursor(workspace_id=data.workspace_id) as (conn, cur):
                 cur.execute("""
                     INSERT INTO pulpo.pedidos (
-                        workspace_id, conversation_id, items_json, 
+                        workspace_id, conversation_id, items_json,
                         metodo_entrega, direccion, total, status, created_at
                     ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
@@ -401,7 +403,7 @@ class GastronomiaActions:
                     data.metodo_entrega,
                     data.direccion,
                     total,
-                    "pending",
+                    "draft",
                     datetime.now(timezone.utc)
                 ))
                 
@@ -411,9 +413,9 @@ class GastronomiaActions:
 
 class InmobiliariaActions:
     """Acciones específicas para inmobiliaria"""
-    
+
     def __init__(self):
-        self.n8n_client = httpx.AsyncClient(timeout=30.0)
+        # self.n8n_client = httpx.AsyncClient(timeout=30.0)  # Not used currently
         self.n8n_base_url = os.getenv("N8N_BASE_URL", "http://localhost:5678")
     
     async def schedule_visit(self, payload: Dict[str, Any]) -> ActionResult:
@@ -649,8 +651,8 @@ class ActionsService:
                     created_at=row["created_at"],
                     eta_minutes=details_dict.get("eta_minutes") if details_dict else None
                 )
-                ACTIONS_REQUESTS.labels(endpoint="/tools/execute_action", action=action_label, result=row["status"]).inc()
-                ACTIONS_DURATION.labels(action=action_label, result=row["status"]).observe(perf_counter() - t0)
+                # ACTIONS_REQUESTS.labels(endpoint="/tools/execute_action", action=action_label, result=row["status"]).inc()
+                # ACTIONS_DURATION.labels(action=action_label, result=row["status"]).observe(perf_counter() - t0)
                 return res
             
             # Si otra instancia ya está procesando, devolvemos 202-like
@@ -663,8 +665,8 @@ class ActionsService:
                     created_at=row["created_at"],
                     eta_minutes=None
                 )
-                ACTIONS_REQUESTS.labels(endpoint="/tools/execute_action", action=action_label, result="processing").inc()
-                ACTIONS_DURATION.labels(action=action_label, result="processing").observe(perf_counter() - t0)
+                # ACTIONS_REQUESTS.labels(endpoint="/tools/execute_action", action=action_label, result="processing").inc()
+                # ACTIONS_DURATION.labels(action=action_label, result="processing").observe(perf_counter() - t0)
                 return res
             
             # Ejecutar acción (único owner del trabajo)
@@ -685,8 +687,8 @@ class ActionsService:
             
             # Métricas para acción ejecutada
             outcome = result.status.value  # success | failed | cancelled
-            ACTIONS_REQUESTS.labels(endpoint="/tools/execute_action", action=action_label, result=outcome).inc()
-            ACTIONS_DURATION.labels(action=action_label, result=outcome).observe(perf_counter() - t0)
+            # ACTIONS_REQUESTS.labels(endpoint="/tools/execute_action", action=action_label, result=outcome).inc()
+            # ACTIONS_DURATION.labels(action=action_label, result=outcome).observe(perf_counter() - t0)
             
             # Convertir a response
             return ExecuteActionResponse(
@@ -700,13 +702,13 @@ class ActionsService:
             
         except ValidationError as ve:
             # Responder 422 para validaciones Pydantic
-            ACTIONS_REQUESTS.labels(endpoint="/tools/execute_action", action=action_label, result="validation_error").inc()
-            ACTIONS_DURATION.labels(action=action_label, result="validation_error").observe(perf_counter() - t0)
+            # ACTIONS_REQUESTS.labels(endpoint="/tools/execute_action", action=action_label, result="validation_error").inc()
+            # ACTIONS_DURATION.labels(action=action_label, result="validation_error").observe(perf_counter() - t0)
             raise HTTPException(status_code=422, detail=ve.errors())
         except Exception as e:
             logger.error(f"Error ejecutando acción: {e}")
-            ACTIONS_REQUESTS.labels(endpoint="/tools/execute_action", action=action_label, result="error").inc()
-            ACTIONS_DURATION.labels(action=action_label, result="error").observe(perf_counter() - t0)
+            # ACTIONS_REQUESTS.labels(endpoint="/tools/execute_action", action=action_label, result="error").inc()
+            # ACTIONS_DURATION.labels(action=action_label, result="error").observe(perf_counter() - t0)
             error_detail = f"Error ejecutando acción: {str(e)}"
             if request_id:
                 error_detail += f" (request_id: {request_id})"
@@ -802,10 +804,10 @@ async def health_check():
         version="2.0.0"
     )
 
-@app.get("/metrics")
-async def metrics():
-    """Endpoint de métricas de Prometheus"""
-    return StarletteResponse(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+# @app.get("/metrics")
+# async def metrics():
+#     """Endpoint de métricas de Prometheus"""
+#     return StarletteResponse(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 @app.post("/tools/execute_action", response_model=ExecuteActionResponse)
 async def execute_action(request: ExecuteActionRequest, response: Response, ctx: RequestContext = Depends(build_context)):
@@ -939,7 +941,7 @@ async def test_action(ctx: RequestContext = Depends(build_context)):
 @app.middleware("http")
 async def prom_http_middleware(request: Request, call_next):
     endpoint = request.url.path
-    INFLIGHT.labels(endpoint=endpoint).inc()
+    # INFLIGHT.labels(endpoint=endpoint).inc()
     t0 = perf_counter()
     try:
         response = await call_next(request)
@@ -947,8 +949,8 @@ async def prom_http_middleware(request: Request, call_next):
     finally:
         dur = perf_counter() - t0
         code = getattr(response, "status_code", 500)
-        HTTP_DURATION.labels(endpoint=endpoint, code=str(code)).observe(dur)
-        INFLIGHT.labels(endpoint=endpoint).dec()
+        # HTTP_DURATION.labels(endpoint=endpoint, code=str(code)).observe(dur)
+        # INFLIGHT.labels(endpoint=endpoint).dec()
 
 # Event handlers
 @app.on_event("startup")
@@ -973,9 +975,10 @@ async def startup_event():
 async def shutdown_event():
     """Evento de cierre de la aplicación"""
     logger.info("🛑 Actions Service cerrando...")
-    await actions_service.gastronomia_actions.n8n_client.aclose()
-    await actions_service.inmobiliaria_actions.n8n_client.aclose()
-    await actions_service.servicios_actions.n8n_client.aclose()
+    # n8n_client was removed as it's not currently used
+    # await actions_service.gastronomia_actions.n8n_client.aclose()
+    # await actions_service.inmobiliaria_actions.n8n_client.aclose()
+    # await actions_service.servicios_actions.n8n_client.aclose()
     if DB_POOL:
         DB_POOL.closeall()
 

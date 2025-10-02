@@ -18,6 +18,7 @@ weaviate-client>=3.25.0
 
 # HTTP requests
 requests>=2.31.0
+httpx>=0.24.0
 
 # Procesamiento de documentos
 pypdf>=3.17.0

@@ -6,7 +6,6 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
-    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copiar requirements
@@ -15,13 +14,13 @@ COPY requirements.txt .
 # Instalar dependencias Python
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar código
-COPY core/ ./core/
+# Copiar código del servicio RAG
 COPY services/ ./services/
+COPY shared/ ./shared/
 COPY utils/ ./utils/
 
 # Exponer puerto
-EXPOSE 8002
+EXPOSE 8007
 
-# Comando de inicio
-CMD ["python", "-m", "uvicorn", "services.rag_query_api:app", "--host", "0.0.0.0", "--port", "8002", "--reload"]
+# Comando para ejecutar el servicio RAG
+CMD ["python", "-m", "uvicorn", "services.rag_service:app", "--host", "0.0.0.0", "--port", "8007", "--reload"]

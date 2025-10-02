@@ -8,6 +8,7 @@ import logging
 import hashlib
 import time
 import contextvars
+import os
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from enum import Enum
@@ -15,6 +16,7 @@ import asyncio
 import httpx
 from datetime import datetime
 from pydantic import BaseModel
+import asyncpg
 
 # Contexto por request (thread-safe, async-safe)
 REQUEST_CONTEXT: contextvars.ContextVar[dict] = contextvars.ContextVar("REQUEST_CONTEXT", default={})
@@ -304,7 +306,7 @@ class PolicyEngine:
 class LLMClient:
     """Cliente para comunicación con el LLM (Ollama)"""
 
-    def __init__(self, base_url: str = "http://localhost:11434", model: str = "llama3.1:8b"):
+    def __init__(self, base_url: str = "http://ollama:11434", model: str = "llama3.1:8b"):
         self.base_url = base_url
         self.model = model
         # Timeout más agresivo para LLM (3s)
@@ -360,7 +362,7 @@ class LLMClient:
 class ToolsClient:
     """Cliente para comunicación con servicios de tools"""
 
-    def __init__(self, rag_url: str = "http://localhost:8003", actions_url: str = "http://localhost:8004"):
+    def __init__(self, rag_url: str = "http://rag:8007", actions_url: str = "http://actions:8006"):
         self.rag_service_url = rag_url
         self.actions_service_url = actions_url
         # Timeouts granulares: connect/read/write/pool
@@ -468,6 +470,8 @@ class OrchestratorService:
         self.llm_client = LLMClient()
         self.tools_client = ToolsClient()
         self._system_cache: Dict[str, str] = {}  # cache de prompts por vertical
+        self.db_pool = None  # Pool de conexiones asyncpg
+        self.database_url = os.getenv("DATABASE_URL", "postgresql://pulpo:pulpo@postgres:5432/pulpo")
 
     def set_request_context(self, ctx: Dict[str, str]) -> RequestContext:
         """
@@ -476,6 +480,124 @@ class OrchestratorService:
             await orchestrator_service.decide(snapshot)
         """
         return RequestContext(ctx)
+
+    async def initialize_db(self):
+        """Inicializa el pool de conexiones a la base de datos"""
+        if self.db_pool is None:
+            try:
+                self.db_pool = await asyncpg.create_pool(
+                    self.database_url,
+                    min_size=2,
+                    max_size=10,
+                    command_timeout=5
+                )
+                logger.info("✅ DB pool initialized for orchestrator")
+            except Exception as e:
+                logger.error(f"❌ Error initializing DB pool: {e}")
+                # No falla el servicio, solo logea el error
+
+    async def close_db(self):
+        """Cierra el pool de conexiones"""
+        if self.db_pool:
+            await self.db_pool.close()
+            logger.info("DB pool closed")
+
+    async def _get_conversation_history(
+        self,
+        conversation_id: str,
+        workspace_id: str,
+        limit: int = 20
+    ) -> List[Dict[str, Any]]:
+        """
+        Lee los últimos N mensajes de la conversación desde la DB
+        Retorna lista de mensajes ordenados cronológicamente (más antiguos primero)
+        """
+        if not self.db_pool:
+            logger.warning("DB pool not initialized, skipping history fetch")
+            return []
+
+        try:
+            async with self.db_pool.acquire() as conn:
+                rows = await conn.fetch("""
+                    SELECT sender, content, message_type, metadata, created_at
+                    FROM pulpo.messages
+                    WHERE conversation_id = $1
+                    AND workspace_id = $2
+                    ORDER BY created_at DESC
+                    LIMIT $3
+                """, conversation_id, workspace_id, limit)
+
+                # Invertir para tener orden cronológico (más antiguos primero)
+                messages = []
+                for row in reversed(rows):
+                    messages.append({
+                        "sender": row["sender"],
+                        "content": row["content"],
+                        "message_type": row["message_type"],
+                        "metadata": dict(row["metadata"]) if row["metadata"] else {},
+                        "created_at": row["created_at"].isoformat()
+                    })
+
+                logger.info(f"[history] Loaded {len(messages)} messages for conversation {conversation_id}")
+                return messages
+
+        except Exception as e:
+            logger.error(f"Error fetching conversation history: {e}")
+            return []
+
+    def _reconstruct_state_from_history(
+        self,
+        messages: List[Dict[str, Any]],
+        vertical: str
+    ) -> Dict[str, Any]:
+        """
+        Reconstruye el estado de la conversación desde el historial de mensajes
+        Retorna: {"greeted": bool, "slots": {}, "objective": str, "last_action": str}
+        """
+        state = {
+            "greeted": False,
+            "slots": {},
+            "objective": "",
+            "last_action": None,
+            "attempts_count": 0
+        }
+
+        # Si no hay mensajes, retornar estado inicial
+        if not messages:
+            return state
+
+        # Verificar si ya saludó (buscar mensajes del assistant)
+        for msg in messages:
+            if msg["sender"] == "assistant":
+                state["greeted"] = True
+                break
+
+        # Extraer slots y objective de los metadatos del último mensaje del assistant
+        for msg in reversed(messages):
+            if msg["sender"] == "assistant":
+                metadata = msg.get("metadata", {})
+
+                # Slots guardados en metadata
+                if "slots" in metadata:
+                    state["slots"] = metadata["slots"]
+
+                # Objective guardado en metadata
+                if "objective" in metadata:
+                    state["objective"] = metadata["objective"]
+
+                # Last action guardada en metadata
+                if "last_action" in metadata:
+                    state["last_action"] = metadata["last_action"]
+
+                # Attempts count
+                if "attempts_count" in metadata:
+                    state["attempts_count"] = metadata.get("attempts_count", 0)
+
+                # Solo tomar del último mensaje del assistant
+                break
+
+        logger.info(f"[state_reconstruction] greeted={state['greeted']}, slots={state['slots']}, objective={state['objective']}")
+        return state
 
     # ---------- prompts ----------
 
@@ -622,7 +744,9 @@ Formato de salida SIEMPRE en JSON:
         
         try:
             # 0. Validar vertical desconocido
+            logger.info(f"[DEBUG] Vertical recibido: '{snapshot.vertical}' | Válidos: {VALID_VERTICALS}")
             if snapshot.vertical not in VALID_VERTICALS:
+                logger.warning(f"[VERTICAL_INVALIDO] Recibido: '{snapshot.vertical}' | Válidos: {VALID_VERTICALS}")
                 return OrchestratorResponse(
                     assistant="Aún no tengo soporte para ese tipo de consulta.",
                     slots=snapshot.slots,

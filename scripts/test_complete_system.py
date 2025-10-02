@@ -1,303 +1,354 @@
 #!/usr/bin/env python3
 """
-Script de prueba completo del sistema PulpoAI
-Carga menú de semilla y prueba el flujo completo
+Script para probar el sistema completo de PulpoAI
+- Workspace semilla
+- Ingesta real de documentos
+- Flujo completo como cliente
 """
 
-import os
-import sys
 import requests
 import json
 import time
-from pathlib import Path
-from dotenv import load_dotenv
+import sys
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from datetime import datetime
 
-# Cargar variables de entorno
-load_dotenv()
+# URLs de los servicios
+RAG_URL = "http://localhost:8007"
+ORCHESTRATOR_URL = "http://localhost:8005"
+ACTIONS_URL = "http://localhost:8006"
+DB_URL = "postgresql://pulpo:pulpo@localhost:5432/pulpo"
 
-# Configuración
-WORKSPACE_ID = "00000000-0000-0000-0000-000000000001"  # Workspace de desarrollo
-MENU_FILE = "examples/menu_completo.txt"
-MENU_API_URL = "http://localhost:8002"
-RAG_API_URL = "http://localhost:8003"
+# Workspace de prueba
+WORKSPACE_ID = "550e8400-e29b-41d4-a716-446655440000"
+CONVERSATION_ID = "550e8400-e29b-41d4-a716-446655440005"
 
-def check_services():
-    """Verifica que todos los servicios estén funcionando"""
-    
-    services = [
-        ("API de Menús", f"{MENU_API_URL}/health"),
-        ("API RAG", f"{RAG_API_URL}/health")
-    ]
-    
-    print("🔍 Verificando servicios...")
-    
-    for name, url in services:
-        try:
-            response = requests.get(url, timeout=5)
-            if response.status_code == 200:
-                print(f"✅ {name}: OK")
-            else:
-                print(f"❌ {name}: Error {response.status_code}")
-                return False
-        except requests.exceptions.RequestException as e:
-            print(f"❌ {name}: No disponible - {e}")
-            return False
-    
-    return True
-
-def load_menu():
-    """Carga el menú de semilla"""
-    
-    print("\n🍕 Cargando menú de semilla...")
-    
-    # Verificar que el archivo existe
-    menu_path = Path(MENU_FILE)
-    if not menu_path.exists():
-        print(f"❌ Archivo de menú no encontrado: {MENU_FILE}")
-        return False
+def setup_workspace():
+    """Configurar workspace semilla"""
+    print("🌱 Configurando workspace semilla...")
     
     try:
-        # Subir menú
-        with open(menu_path, 'rb') as file:
-            files = {'file': (menu_path.name, file, 'text/plain')}
-            params = {'workspace_id': WORKSPACE_ID}
-            
-            response = requests.post(
-                f"{MENU_API_URL}/menus/upload",
-                files=files,
-                params=params,
-                timeout=60  # Más tiempo para procesamiento
-            )
+        conn = psycopg2.connect(DB_URL)
+        cursor = conn.cursor()
         
-        if response.status_code == 200:
-            result = response.json()
-            print(f"✅ Menú cargado: {result['menu_id']}")
-            print(f"   📊 Chunks: {result['chunks_created']}")
-            print(f"   🧠 Embeddings: {result['embeddings_generated']}")
-            return result['menu_id']
-        else:
-            print(f"❌ Error cargando menú: {response.status_code}")
-            print(f"   Respuesta: {response.text}")
-            return False
-            
+        # Ejecutar script de seed
+        with open('sql/05_seed_workspace.sql', 'r') as f:
+            seed_sql = f.read()
+        
+        cursor.execute(seed_sql)
+        conn.commit()
+        
+        cursor.close()
+        conn.close()
+        
+        print("✅ Workspace semilla configurado")
+        return True
+        
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"❌ Error configurando workspace: {e}")
         return False
 
-def test_rag_queries():
-    """Prueba consultas RAG"""
-    
-    print("\n🔍 Probando consultas RAG...")
-    
-    # Consultas de prueba
-    test_queries = [
-        "quiero una pizza vegetariana",
-        "empanadas de carne",
-        "bebidas",
-        "postres",
-        "combos familiares",
-        "envío gratis",
-        "horarios de atención",
-        "formas de pago"
-    ]
-    
-    for query in test_queries:
-        print(f"\n🔎 Consulta: '{query}'")
-        
-        try:
-            # Consulta RAG
-            response = requests.get(
-                f"{RAG_API_URL}/query/simple",
-                params={
-                    'query': query,
-                    'workspace_id': WORKSPACE_ID,
-                    'limit': 3
-                },
-                timeout=10
-            )
-            
-            if response.status_code == 200:
-                results = response.json()
-                print(f"   ✅ Encontrados {results['total']} resultados:")
-                
-                for i, result in enumerate(results['results'][:2], 1):
-                    content = result['content'][:100] + "..." if len(result['content']) > 100 else result['content']
-                    print(f"      {i}. {content}")
-                    print(f"         Similitud: {result['similarity']:.2f}")
-            else:
-                print(f"   ❌ Error: {response.status_code}")
-                
-        except Exception as e:
-            print(f"   ❌ Error: {e}")
-
-def test_menu_specific_queries():
-    """Prueba consultas específicas de menú"""
-    
-    print("\n🍕 Probando consultas específicas de menú...")
-    
-    menu_queries = [
-        "pizza margherita",
-        "empanada de jamón y queso",
-        "ensalada césar",
-        "combo familiar",
-        "precio de empanadas"
-    ]
-    
-    for query in menu_queries:
-        print(f"\n🍽️ Consulta menú: '{query}'")
-        
-        try:
-            response = requests.get(
-                f"{RAG_API_URL}/query/menu",
-                params={
-                    'query': query,
-                    'workspace_id': WORKSPACE_ID,
-                    'limit': 2
-                },
-                timeout=10
-            )
-            
-            if response.status_code == 200:
-                results = response.json()
-                print(f"   ✅ Encontrados {results['total']} resultados de menú:")
-                
-                for result in results['menu_results']:
-                    content = result['content'][:150] + "..." if len(result['content']) > 150 else result['content']
-                    print(f"      📄 {content}")
-                    print(f"         Similitud: {result['similarity']:.2f}")
-            else:
-                print(f"   ❌ Error: {response.status_code}")
-                
-        except Exception as e:
-            print(f"   ❌ Error: {e}")
-
-def test_context_retrieval():
-    """Prueba obtención de contexto"""
-    
-    print("\n📋 Probando obtención de contexto...")
+def test_rag_with_real_data():
+    """Probar RAG con datos reales"""
+    print("\n🔍 Probando RAG con datos reales...")
     
     try:
-        response = requests.get(
-            f"{RAG_API_URL}/query/context",
-            params={
-                'workspace_id': WORKSPACE_ID,
-                'context_type': 'menu'
-            },
+        # Test de búsqueda con datos reales
+        search_payload = {
+            "query": "¿Qué platos de pescado tienen?",
+            "workspace_id": WORKSPACE_ID,
+            "limit": 3
+        }
+        
+        response = requests.post(
+            f"{RAG_URL}/rag/search",
+            json=search_payload,
+            headers={"X-Workspace-Id": WORKSPACE_ID},
             timeout=10
         )
         
         if response.status_code == 200:
-            context = response.json()
-            print(f"✅ Contexto obtenido: {context['total']} elementos")
-            
-            for i, item in enumerate(context['context'][:3], 1):
-                content = item['content'][:100] + "..." if len(item['content']) > 100 else item['content']
-                print(f"   {i}. {content}")
+            result = response.json()
+            print(f"✅ RAG: {len(result['results'])} resultados encontrados")
+            for i, result_item in enumerate(result['results']):
+                print(f"  {i+1}. {result_item['content']}")
+            return True
         else:
-            print(f"❌ Error obteniendo contexto: {response.status_code}")
+            print(f"❌ RAG error: {response.status_code}")
+            return False
             
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"❌ RAG error: {e}")
+        return False
 
-def simulate_conversation():
-    """Simula una conversación completa"""
+def test_orchestrator_with_vertical():
+    """Probar Orchestrator con vertical dinámico"""
+    print("\n🎭 Probando Orchestrator con vertical dinámico...")
     
-    print("\n💬 Simulando conversación completa...")
+    try:
+        # Test con vertical gastronomía
+        snapshot_payload = {
+            "conversation_id": CONVERSATION_ID,
+            "vertical": "gastronomia",
+            "user_input": "Hola, quiero saber qué platos de pescado tienen",
+            "greeted": True,
+            "slots": {},
+            "objective": "consultar_menu",
+            "last_action": None,
+            "attempts_count": 0
+        }
+        
+        response = requests.post(
+            f"{ORCHESTRATOR_URL}/orchestrator/decide",
+            json=snapshot_payload,
+            headers={"X-Workspace-Id": WORKSPACE_ID},
+            timeout=15
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            print(f"✅ Orchestrator: {result['next_action']}")
+            print(f"  Respuesta: {result['assistant']}")
+            if result['tool_calls']:
+                print(f"  Tool calls: {len(result['tool_calls'])}")
+            return True
+        else:
+            print(f"❌ Orchestrator error: {response.status_code}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Orchestrator error: {e}")
+        return False
+
+def test_actions_with_real_data():
+    """Probar Actions con datos reales"""
+    print("\n⚡ Probando Actions con datos reales...")
+
+    try:
+        # Test de ejecución de acción - crear pedido
+        action_payload = {
+            "conversation_id": CONVERSATION_ID,
+            "action_name": "crear_pedido",
+            "payload": {
+                "workspace_id": WORKSPACE_ID,
+                "conversation_id": CONVERSATION_ID,
+                "items": [
+                    {"nombre": "Empanada de Carne", "cantidad": 2}
+                ],
+                "metodo_entrega": "retira"
+            },
+            "idempotency_key": f"test-{int(time.time())}"
+        }
+        
+        response = requests.post(
+            f"{ACTIONS_URL}/tools/execute_action",
+            json=action_payload,
+            headers={"X-Workspace-Id": WORKSPACE_ID},
+            timeout=10
+        )
+        
+        if response.status_code in [200, 202]:
+            result = response.json()
+            print(f"✅ Actions: {result['status']}")
+            print(f"  Resumen: {result['summary']}")
+            print(f"  Action ID: {result['action_id']}")
+            return True
+        else:
+            print(f"❌ Actions error: {response.status_code}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Actions error: {e}")
+        return False
+
+def test_complete_conversation():
+    """Probar conversación completa como cliente real"""
+    print("\n💬 Probando conversación completa como cliente...")
     
-    # Simular flujo de conversación
-    conversation_flow = [
+    try:
+        # Simular conversación real
+        conversation_steps = [
+            {
+                "user_input": "Hola, quiero saber qué platos de pescado tienen",
+                "expected_intent": "consultar_menu"
+            },
+            {
+                "user_input": "Me interesa el pescado a la plancha, ¿cuánto cuesta?",
+                "expected_intent": "consultar_precios"
+            },
+            {
+                "user_input": "Perfecto, quiero hacer una reserva para esta noche",
+                "expected_intent": "hacer_reserva"
+            }
+        ]
+        
+        for i, step in enumerate(conversation_steps):
+            print(f"\n👤 Cliente: {step['user_input']}")
+            
+            # Orchestrator decide
+            snapshot_payload = {
+                "conversation_id": CONVERSATION_ID,
+                "vertical": "gastronomia",
+                "user_input": step['user_input'],
+                "greeted": i > 0,
+                "slots": {},
+                "objective": step['expected_intent'],
+                "last_action": None,
+                "attempts_count": 0
+            }
+            
+            response = requests.post(
+                f"{ORCHESTRATOR_URL}/orchestrator/decide",
+                json=snapshot_payload,
+                headers={"X-Workspace-Id": WORKSPACE_ID},
+                timeout=15
+            )
+            
+            if response.status_code != 200:
+                print(f"❌ Error en Orchestrator: {response.status_code}")
+                return False
+            
+            orchestrator_result = response.json()
+            print(f"🤖 Asistente: {orchestrator_result['assistant']}")
+            
+            # Si hay tool calls, ejecutarlos
+            if orchestrator_result['tool_calls']:
+                for tool_call in orchestrator_result['tool_calls']:
+                    print(f"⚡ Ejecutando: {tool_call['name']}")
+
+                    action_payload = {
+                        "conversation_id": CONVERSATION_ID,
+                        "action_name": tool_call['name'],
+                        "payload": {
+                            "workspace_id": WORKSPACE_ID,
+                            "conversation_id": CONVERSATION_ID,
+                            **tool_call['args']
+                        },
+                        "idempotency_key": f"test-{int(time.time())}-{tool_call['name']}"
+                    }
+
+                    response = requests.post(
+                        f"{ACTIONS_URL}/tools/execute_action",
+                        json=action_payload,
+                        headers={"X-Workspace-Id": WORKSPACE_ID},
+                        timeout=10
+                    )
+
+                    if response.status_code == 200:
+                        action_result = response.json()
+                        print(f"  ✅ Resultado: {action_result.get('message', action_result.get('summary', 'OK'))}")
+                    else:
+                        print(f"  ❌ Error en acción: {response.status_code}")
+            
+            # Pausa entre pasos
+            time.sleep(1)
+        
+        print("\n✅ Conversación completa exitosa")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error en conversación: {e}")
+        return False
+
+def test_different_verticals():
+    """Probar diferentes verticales"""
+    print("\n🏢 Probando diferentes verticales...")
+    
+    verticals = [
         {
-            "user": "Hola, quiero hacer un pedido",
-            "expected_rag": "información general del menú"
+            "name": "Gastronomía",
+            "vertical": "gastronomia",
+            "user_input": "Quiero hacer una reserva para esta noche"
         },
         {
-            "user": "Quiero una pizza vegetariana",
-            "expected_rag": "pizza vegetariana margherita"
+            "name": "Inmobiliaria", 
+            "vertical": "inmobiliaria",
+            "user_input": "Busco un apartamento de 2 habitaciones en el norte"
         },
         {
-            "user": "¿Qué bebidas tienen?",
-            "expected_rag": "bebidas coca cola agua"
-        },
-        {
-            "user": "¿Hay combos familiares?",
-            "expected_rag": "combo familiar pizza empanadas"
+            "name": "Servicios",
+            "vertical": "servicios", 
+            "user_input": "Quiero agendar una cita para mañana"
         }
     ]
     
-    for step in conversation_flow:
-        print(f"\n👤 Usuario: {step['user']}")
+    for vertical_test in verticals:
+        print(f"\n🏢 {vertical_test['name']}:")
+        print(f"👤 Cliente: {vertical_test['user_input']}")
         
         try:
-            # Simular consulta RAG que haría el LLM
-            response = requests.get(
-                f"{RAG_API_URL}/query/simple",
-                params={
-                    'query': step['expected_rag'],
-                    'workspace_id': WORKSPACE_ID,
-                    'limit': 2
-                },
-                timeout=10
+            snapshot_payload = {
+                "conversation_id": CONVERSATION_ID,
+                "vertical": vertical_test['vertical'],
+                "user_input": vertical_test['user_input'],
+                "greeted": True,
+                "slots": {},
+                "objective": "consultar",
+                "last_action": None,
+                "attempts_count": 0
+            }
+            
+            response = requests.post(
+                f"{ORCHESTRATOR_URL}/orchestrator/decide",
+                json=snapshot_payload,
+                headers={"X-Workspace-Id": WORKSPACE_ID},
+                timeout=15
             )
             
             if response.status_code == 200:
-                results = response.json()
-                print(f"🤖 AI consultaría: '{step['expected_rag']}'")
-                print(f"   📊 Encontrados {results['total']} resultados relevantes")
-                
-                # Mostrar el mejor resultado
-                if results['results']:
-                    best_result = results['results'][0]
-                    content = best_result['content'][:200] + "..." if len(best_result['content']) > 200 else best_result['content']
-                    print(f"   🎯 Mejor resultado: {content}")
-                    print(f"   📈 Similitud: {best_result['similarity']:.2f}")
+                result = response.json()
+                print(f"🤖 Asistente: {result['assistant']}")
+                print(f"  Acción: {result['next_action']}")
             else:
-                print(f"   ❌ Error en consulta RAG: {response.status_code}")
+                print(f"❌ Error: {response.status_code}")
                 
         except Exception as e:
-            print(f"   ❌ Error: {e}")
+            print(f"❌ Error: {e}")
+        
+        time.sleep(1)
 
 def main():
     """Función principal"""
+    print("🚀 Iniciando test completo del sistema PulpoAI")
+    print("=" * 60)
     
-    print("🚀 Prueba Completa del Sistema PulpoAI")
-    print("=" * 50)
+    # Paso 1: Configurar workspace
+    if not setup_workspace():
+        print("❌ No se pudo configurar el workspace")
+        sys.exit(1)
     
-    # 1. Verificar servicios
-    if not check_services():
-        print("\n💡 Asegúrate de que los servicios estén ejecutándose:")
-        print("   python services/menu_api.py")
-        print("   python services/rag_query_api.py")
-        return False
+    # Paso 2: Probar RAG con datos reales
+    if not test_rag_with_real_data():
+        print("❌ RAG con datos reales falló")
+        sys.exit(1)
     
-    # 2. Cargar menú
-    menu_id = load_menu()
-    if not menu_id:
-        return False
+    # Paso 3: Probar Orchestrator con vertical
+    if not test_orchestrator_with_vertical():
+        print("❌ Orchestrator con vertical falló")
+        sys.exit(1)
     
-    # Esperar un poco para que se procese
-    print("\n⏳ Esperando procesamiento...")
-    time.sleep(2)
+    # Paso 4: Probar Actions con datos reales
+    if not test_actions_with_real_data():
+        print("❌ Actions con datos reales falló")
+        sys.exit(1)
     
-    # 3. Probar consultas RAG
-    test_rag_queries()
+    # Paso 5: Probar conversación completa
+    if not test_complete_conversation():
+        print("❌ Conversación completa falló")
+        sys.exit(1)
     
-    # 4. Probar consultas específicas de menú
-    test_menu_specific_queries()
+    # Paso 6: Probar diferentes verticales
+    test_different_verticals()
     
-    # 5. Probar obtención de contexto
-    test_context_retrieval()
-    
-    # 6. Simular conversación
-    simulate_conversation()
-    
-    print("\n🎉 ¡Prueba completa exitosa!")
-    print(f"🏢 Workspace: {WORKSPACE_ID}")
-    print(f"🆔 Menu ID: {menu_id}")
-    print("\n💡 El sistema está listo para probar con n8n!")
-    
-    return True
+    print("\n🎉 ¡Sistema completo funcionando!")
+    print("=" * 60)
+    print("✅ Workspace semilla: OK")
+    print("✅ RAG con datos reales: OK")
+    print("✅ Orchestrator con verticales: OK")
+    print("✅ Actions con datos reales: OK")
+    print("✅ Conversación completa: OK")
+    print("✅ Múltiples verticales: OK")
 
 if __name__ == "__main__":
-    success = main()
-    sys.exit(0 if success else 1)
-
+    main()

@@ -17,8 +17,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copiar código
 COPY services/ ./services/
+COPY shared/ ./shared/
 COPY utils/ ./utils/
-COPY auth/ ./auth/
 
 # Crear directorio de logs
 RUN mkdir -p /app/logs
