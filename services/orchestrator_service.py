@@ -105,7 +105,7 @@ def safe_json_loads(s: str) -> Optional[Dict[str, Any]]:
 BUSINESS_SLOTS = {
     "gastronomia": ["categoria", "items", "metodo_entrega", "direccion", "metodo_pago", "notas", "workspace_id", "conversation_id"],
     "inmobiliaria": ["operation", "type", "zone", "price_range", "bedrooms", "bathrooms", "property_id", "preferred_date", "contact_info", "workspace_id", "conversation_id"],
-    "servicios": ["service_type", "preferred_date", "preferred_time", "staff_preference", "notes", "contact_info", "workspace_id", "conversation_id"],
+    "servicios": ["service_type", "preferred_date", "preferred_time", "staff_preference", "notes", "client_name", "client_email", "client_phone", "workspace_id", "conversation_id"],
 }
 
 # Slots críticos que requieren reset de validación RAG
@@ -143,8 +143,8 @@ class PolicyEngine:
                 "rag_min_score": 0.08
             },
             "servicios": {
-                "required_slots": ["service_type", "preferred_date"],
-                "optional_slots": ["preferred_time", "staff_preference", "notes"],
+                "required_slots": ["service_type", "preferred_date", "preferred_time", "client_name", "client_email"],
+                "optional_slots": ["client_phone", "staff_preference", "notes"],
                 "max_attempts": 3,
                 "needs_rag_before_action": False,  # muchas veces podés accionar directo
                 "rag_min_score": 0.03
@@ -172,9 +172,13 @@ class PolicyEngine:
                 reason="Usuario no ha sido saludado aún"
             )
 
-        # 2) Slots faltantes
+        # 2) Detectar si el usuario quiere hacer algo concreto (pedido, reserva, etc)
+        # Si no hay objective_confirmed, no forzar slots requeridos
+        user_wants_action = snapshot.slots.get("objective_confirmed") or snapshot.slots.get("items") or snapshot.slots.get("categoria")
+
+        # 2) Slots faltantes (solo si el usuario quiere hacer una acción)
         missing_slots = [s for s in required_slots if not snapshot.slots.get(s)]
-        if missing_slots and snapshot.attempts_count < max_attempts:
+        if user_wants_action and missing_slots and snapshot.attempts_count < max_attempts:
             # preguntamos por el slot que más reduce el espacio de búsqueda (primero de la lista)
             return NextStep(
                 next_action=NextAction.SLOT_FILL,
@@ -295,7 +299,7 @@ class PolicyEngine:
         actions = {
             "gastronomia": "crear_pedido",
             "inmobiliaria": "schedule_visit",
-            "servicios": "book_slot"
+            "servicios": "schedule_appointment"  # Acción para agendamiento de turnos
         }
         return actions.get(vertical, "unknown_action")
 
@@ -530,11 +534,13 @@ class OrchestratorService:
                 # Invertir para tener orden cronológico (más antiguos primero)
                 messages = []
                 for row in reversed(rows):
+                    # asyncpg devuelve jsonb como dict, no necesita conversión
+                    metadata = row["metadata"] if row["metadata"] else {}
                     messages.append({
                         "sender": row["sender"],
                         "content": row["content"],
                         "message_type": row["message_type"],
-                        "metadata": dict(row["metadata"]) if row["metadata"] else {},
+                        "metadata": metadata,
                         "created_at": row["created_at"].isoformat()
                     })
 
@@ -575,11 +581,29 @@ class OrchestratorService:
         # Extraer slots y objective de los metadatos del último mensaje del assistant
         for msg in reversed(messages):
             if msg["sender"] == "assistant":
-                metadata = msg.get("metadata", {})
+                metadata_raw = msg.get("metadata", {})
 
-                # Slots guardados en metadata
+                # Si metadata es string JSON, parsearlo
+                if isinstance(metadata_raw, str):
+                    try:
+                        metadata = json.loads(metadata_raw)
+                    except:
+                        metadata = {}
+                else:
+                    metadata = metadata_raw
+
+                # Slots guardados en metadata (puede ser dict o string JSON)
                 if "slots" in metadata:
-                    state["slots"] = metadata["slots"]
+                    slots_data = metadata["slots"]
+                    if isinstance(slots_data, str):
+                        try:
+                            state["slots"] = json.loads(slots_data)
+                        except:
+                            state["slots"] = {}
+                    elif isinstance(slots_data, dict):
+                        state["slots"] = slots_data
+                    else:
+                        state["slots"] = {}
 
                 # Objective guardado en metadata
                 if "objective" in metadata:
@@ -606,48 +630,97 @@ class OrchestratorService:
             return self._system_cache[vertical]
 
         base = """
-Eres un orquestador de diálogo orientado a tareas para WhatsApp. Trabajas por workspace (multitenant) y sigues una Máquina de Estados (FSM) con slots. Hablas en español. Tu objetivo es completar slots y ejecutar tools para resolver la intención del usuario con el menor número de turnos posible, manteniendo UX natural.
+Eres un asistente virtual inteligente para WhatsApp. Tu objetivo es ayudar al cliente de forma natural y eficiente, como lo haría un empleado experimentado del negocio.
 
-Principios:
-1) Una pregunta por turno. Respuestas cortas (1–2 oraciones) + siguiente paso claro.
-2) No inventes datos. Cuando falte info, pídela. Para datos del negocio, usa RAG o tools.
-3) No envíes menús/catálogos completos salvo que el usuario lo pida explícitamente.
-4) Muestra 3–5 opciones relevantes como máximo cuando listes resultados.
-5) Confirma antes de cerrar (resumen, total/ETA, fecha/hora, dirección, etc.).
-6) Respeta políticas del workspace (horarios, zonas, pagos).
+PRINCIPIOS DE CONVERSACIÓN:
+1. Sé NATURAL y HUMANO: No suenas como un formulario. Conversa de forma fluida.
+2. ENTIENDE EL CONTEXTO: Lee toda la conversación para entender qué quiere el cliente.
+3. SÉ EFICIENTE: Recolecta información de forma inteligente, no pidas dato por dato robóticamente.
+4. CONFIRMA ANTES DE EJECUTAR: Resume el pedido/reserva antes de confirmar.
+5. USA HERRAMIENTAS: Cuando necesites info del negocio (menú, disponibilidad), usa las tools disponibles.
 
-Formato de salida SIEMPRE en JSON:
+FORMATO DE RESPUESTA (siempre JSON):
 {
-  "reply": "texto para el usuario",
-  "updated_state": {...},   // slots u otros campos
-  "tool_calls": [{"name":"<tool>", "arguments":{...}}],
-  "end": false
+  "reply": "tu mensaje para el cliente (1-3 oraciones, natural y conversacional)",
+  "updated_state": {
+    "categoria": "...",
+    "items": ["..."],
+    // otros campos que descubriste en esta conversación
+  },
+  "tool_calls": [
+    {"name": "search_menu", "arguments": {"query": "pizza"}}
+  ],
+  "end": false  // true solo cuando hayas completado la acción (pedido confirmado, turno agendado, etc)
 }
+
+IMPORTANTE:
+- NO pidas información que ya sabes
+- NO repitas preguntas
+- SI el cliente da múltiple información junta, capturala toda
+- Ejemplo: "quiero una pizza grande de muzzarella para delivery a Constitución 123" → Ya tenés: items=["pizza grande muzzarella"], metodo_entrega="delivery", direccion="Constitución 123"
 """.strip()
 
         if vertical == "gastronomia":
             base += """
-\nVertical: GASTRONOMÍA
-- Objetivo: Completar pedido de comida
-- Slots: categoria, items, extras, metodo_entrega, direccion, metodo_pago, notas
-- Tools: search_menu, suggest_upsell, create_order
-- Políticas: horarios de entrega, zonas de cobertura, métodos de pago
+
+VERTICAL: GASTRONOMÍA
+Tu rol: Tomar pedidos de comida como lo haría un empleado del local.
+
+INFORMACIÓN NECESARIA PARA PEDIDO:
+- ¿Qué quiere? (items: ej. "2 pizzas grandes", "hamburguesa completa")
+- ¿Cómo lo quiere? (metodo_entrega: "delivery", "retiro", "comer aquí")
+- Si es delivery: ¿Dónde? (direccion)
+- Opcional: extras, forma de pago, notas especiales
+
+TOOLS DISPONIBLES:
+- search_menu: Buscar en el menú del local (precios, disponibilidad)
+- create_order: Crear el pedido (solo cuando tengas TODO confirmado)
+
+FLUJO CONVERSACIONAL:
+1. Saluda y pregunta qué desea
+2. Si no conocés el menú, usa search_menu para ayudar
+3. Recolecta items + método de entrega (+ dirección si es delivery)
+4. Resume el pedido y confirma
+5. Ejecuta create_order
+6. Confirma al cliente con tiempo estimado
+
+EJEMPLO DE CONVERSACIÓN NATURAL:
+Usuario: "hola quiero pedir"
+Tú: "¡Hola! ¿Qué te gustaría pedir hoy?"
+Usuario: "tienen pizzas?"
+Tú: [usa search_menu] "Sí! Tenemos pizzas de muzzarella, napolitana, especial... ¿Cuál preferís?"
+Usuario: "una grande de muzza para llevar"
+Tú: "Perfecto! Una pizza grande de muzzarella para retiro. ¿En unos 25 minutos te viene bien?"
+Usuario: "dale"
+Tú: [ejecuta create_order] "¡Listo! Tu pedido está confirmado. Te esperamos en 25 minutos."
 """
         elif vertical == "inmobiliaria":
             base += """
-\nVertical: INMOBILIARIA
-- Objetivo: Agendar visita a propiedad
-- Slots: operation, type, zone, price_range, bedrooms, bathrooms
-- Tools: list_properties, schedule_visit
-- Políticas: horarios de visitas, disponibilidad de propiedades
+
+VERTICAL: INMOBILIARIA
+Tu rol: Agendar visitas a propiedades como lo haría un agente inmobiliario.
+
+INFORMACIÓN NECESARIA:
+- Operación (alquiler/venta)
+- Tipo de propiedad (casa/depto/etc)
+- Zona
+- Rango de precio (opcional pero útil)
+- Fecha preferida para la visita
+
+TOOLS: list_properties, schedule_visit
 """
         elif vertical == "servicios":
             base += """
-\nVertical: SERVICIOS
-- Objetivo: Reservar turno
-- Slots: service_type, preferred_date, preferred_time, staff_preference, notes
-- Tools: list_services, list_slots, book_slot
-- Políticas: horarios de atención, disponibilidad de staff
+
+VERTICAL: SERVICIOS (Turnos)
+Tu rol: Agendar turnos como lo haría la recepcionista.
+
+INFORMACIÓN NECESARIA:
+- Tipo de servicio (ej: corte, tintura, manicura)
+- Fecha y hora preferida
+- Profesional preferido (opcional)
+
+TOOLS: list_services, list_slots, book_slot
 """
 
         self._system_cache[vertical] = base
@@ -663,15 +736,45 @@ Formato de salida SIEMPRE en JSON:
 
         # Endurecer workspace_id y conversation_id del payload (evitar spoofing)
         headers = self.tools_client._merged_headers()
-        
+
         # workspace_id desde header confiable
         if "workspace_id" in keys and "X-Workspace-Id" in headers:
             payload["workspace_id"] = headers["X-Workspace-Id"]
-        
+
         # conversation_id SIEMPRE del snapshot (fuente confiable)
         if "conversation_id" in keys:
             payload["conversation_id"] = conversation_id
-        
+
+        # Mapeo específico para servicios (appointments)
+        if vertical == "servicios":
+            # Mapear campos al formato esperado por Actions Service
+            mapped_payload = {}
+
+            if "service_type" in payload:
+                mapped_payload["service_type_name"] = payload["service_type"]
+
+            if "preferred_date" in payload:
+                mapped_payload["appointment_date"] = payload["preferred_date"]
+
+            if "preferred_time" in payload:
+                mapped_payload["appointment_time"] = payload["preferred_time"]
+
+            if "client_name" in payload:
+                mapped_payload["client_name"] = payload["client_name"]
+
+            if "client_email" in payload:
+                mapped_payload["client_email"] = payload["client_email"]
+
+            if "client_phone" in payload:
+                mapped_payload["client_phone"] = payload["client_phone"]
+
+            if "notes" in payload:
+                mapped_payload["notes"] = payload["notes"]
+
+            # staff_preference es opcional, no lo mapeamos por ahora (auto-asignación)
+
+            return mapped_payload
+
         return payload
 
     def _filter_updated_state(self, vertical: str, upd: Dict[str, Any]) -> Dict[str, Any]:
@@ -741,8 +844,11 @@ Formato de salida SIEMPRE en JSON:
             "tool_failures": 0,
             "reply_len": 0
         }
-        
+
         try:
+            # 0. Log del snapshot recibido
+            logger.info(f"[SNAPSHOT] conversation_id={snapshot.conversation_id}, greeted={snapshot.greeted}, slots={snapshot.slots}, user_input='{snapshot.user_input[:30]}'")
+
             # 0. Validar vertical desconocido
             logger.info(f"[DEBUG] Vertical recibido: '{snapshot.vertical}' | Válidos: {VALID_VERTICALS}")
             if snapshot.vertical not in VALID_VERTICALS:
@@ -816,14 +922,38 @@ Formato de salida SIEMPRE en JSON:
     # ---------- handlers ----------
 
     async def _handle_greet(self, snapshot: ConversationSnapshot) -> OrchestratorResponse:
-        """Saludo determinista (sin LLM)"""
-        # TIP: en el futuro, podés personalizar por horario/zona desde workspace_configs
-        greeting = self._clip_reply("¡Hola! ¿En qué puedo ayudarte hoy?")
-        # mantenemos compatibilidad: marcamos greeted en slots (aunque idealmente sería estado aparte)
+        """Saludo natural usando LLM"""
+        sys = self._system_prompt(snapshot.vertical)
+        usr = f"""
+Usuario dice: "{snapshot.user_input}"
+
+Contexto: Es el primer mensaje del usuario.
+
+Saluda de forma cordial y natural, presentándote brevemente según tu rol.
+Devuelve JSON con "reply" y opcionalmente "updated_state".
+""".strip()
+
+        # Medir tiempo de LLM
+        t0 = time.perf_counter()
+        data = await self.llm_client.generate_json(sys, usr)
+        llm_ms = int((time.perf_counter() - t0) * 1000)
+        self._telemetry_add("llm_ms", llm_ms)
+
         new_slots = dict(snapshot.slots)
         new_slots["greeted"] = True
+
+        # Si el LLM falla, usar fallback
+        if not data:
+            greeting = "¡Hola! ¿En qué puedo ayudarte hoy?"
+        else:
+            greeting = data.get("reply") or "¡Hola! ¿En qué puedo ayudarte hoy?"
+            # Merge updated_state si existe
+            upd = self._filter_updated_state(snapshot.vertical, data.get("updated_state") if data else {})
+            if upd:
+                new_slots.update(upd)
+
         return OrchestratorResponse(
-            assistant=greeting,
+            assistant=self._clip_reply(greeting),
             slots=new_slots,
             tool_calls=[],
             context_used=[],
@@ -1029,14 +1159,37 @@ Devuelve JSON con "reply" y "updated_state".
         )
 
     async def _handle_answer(self, snapshot: ConversationSnapshot) -> OrchestratorResponse:
-        """Respuesta general con LLM (JSON)"""
+        """
+        Handler inteligente principal: usa el LLM para entender contexto,
+        recolectar información de forma natural y decidir próximos pasos
+        """
         sys = self._system_prompt(snapshot.vertical)
-        usr = f"""
-Usuario dice: "{snapshot.user_input}"
-Slots actuales: {json.dumps(snapshot.slots, ensure_ascii=False)}
 
-Responde útil en 1–2 oraciones y sugiere el siguiente paso.
-Devuelve JSON con "reply" y "updated_state".
+        # Construir contexto rico para el LLM
+        slots_info = json.dumps(snapshot.slots, ensure_ascii=False) if snapshot.slots else "{}"
+
+        usr = f"""
+MENSAJE DEL USUARIO: "{snapshot.user_input}"
+
+ESTADO ACTUAL DE LA CONVERSACIÓN:
+- Información recolectada hasta ahora: {slots_info}
+- Objetivo: {snapshot.objective or 'Ayudar al cliente con su consulta'}
+- Ya saludado: {'Sí' if snapshot.greeted else 'No'}
+
+INSTRUCCIONES:
+1. Analiza qué información nueva te da el usuario en este mensaje
+2. Actualiza el estado con toda la info que puedas extraer
+3. Decide si necesitas:
+   - Pedir más información (¿qué falta para completar el objetivo?)
+   - Buscar información del negocio (usa tools como search_menu)
+   - Confirmar y ejecutar la acción (si ya tenés todo)
+4. Responde de forma natural y conversacional
+
+RESPONDE EN JSON con:
+- "reply": Tu mensaje (natural, 1-3 oraciones)
+- "updated_state": Slots/campos que descubriste o actualizaste
+- "tool_calls": Array de tools a ejecutar (si necesitás buscar info)
+- "end": true solo si completaste la acción principal (pedido confirmado, turno agendado, etc)
 """.strip()
 
         # Medir tiempo de LLM
@@ -1044,22 +1197,38 @@ Devuelve JSON con "reply" y "updated_state".
         data = await self.llm_client.generate_json(sys, usr)
         llm_ms = int((time.perf_counter() - t0) * 1000)
         self._telemetry_add("llm_ms", llm_ms)
+
         new_slots = dict(snapshot.slots)
-        upd = self._filter_updated_state(snapshot.vertical, (data or {}).get("updated_state"))
-        if upd:
-            # Reset validación si cambian slots críticos
-            new_slots = self._maybe_reset_validation(snapshot.slots, {**new_slots, **upd}, snapshot.vertical)
-            new_slots.update(upd)
-        reply = (data or {}).get("reply") or "Entiendo. ¿Podés contarme un poco más para ayudarte mejor?"
+        tool_calls = []
+        end = False
+
+        if data:
+            # Extraer updated_state
+            upd = self._filter_updated_state(snapshot.vertical, data.get("updated_state", {}))
+            if upd:
+                new_slots = self._maybe_reset_validation(snapshot.slots, {**new_slots, **upd}, snapshot.vertical)
+                new_slots.update(upd)
+
+            # Extraer tool_calls
+            tool_calls = data.get("tool_calls", [])
+
+            # Extraer end
+            end = data.get("end", False)
+
+            reply = data.get("reply") or "Entiendo. ¿Podés contarme un poco más?"
+        else:
+            reply = "Entiendo. ¿Podés contarme un poco más para ayudarte mejor?"
+
         # Normalizar slots después de merge
         new_slots = self._normalize_slots(snapshot.vertical, new_slots)
+
         return OrchestratorResponse(
             assistant=self._clip_reply(reply),
             slots=new_slots,
-            tool_calls=[],
+            tool_calls=tool_calls,
             context_used=[],
             next_action=NextAction.ANSWER,
-            end=False
+            end=end
         )
     
     async def close(self):
