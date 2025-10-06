@@ -1,0 +1,11 @@
+name,description,category,price,currency,duration_minutes,is_active,requires_staff
+Corte de Cabello,Corte de cabello con lavado incluido,hair,2500,ARS,45,true,true
+Coloración Completa,Aplicación de color en todo el cabello,hair,6500,ARS,120,true,true
+Mechas/Reflejos,Mechas o reflejos parciales,hair,5000,ARS,90,true,true
+Brushing,Secado y peinado profesional,hair,1800,ARS,30,true,true
+Tratamiento Capilar,Tratamiento nutritivo o reparador,hair,3500,ARS,45,true,true
+Corte y Barba,Corte de cabello y arreglo de barba,hair,3000,ARS,60,true,true
+Barba Completa,Diseño y arreglo completo de barba,hair,1500,ARS,30,true,true
+Manicura,Manicura básica con esmaltado,nails,1200,ARS,45,true,true
+Pedicura,Pedicura completa con esmaltado,nails,1500,ARS,60,true,true
+Manicura Semipermanente,Manicura con esmaltado semipermanente,nails,2000,ARS,60,true,true

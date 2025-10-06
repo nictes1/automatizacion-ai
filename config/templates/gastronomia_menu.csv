@@ -1,0 +1,16 @@
+sku,nombre,descripcion,precio,categoria,disponible,imagen_url
+PIZZA-001,Pizza Margherita,Salsa de tomate napolitana con mozzarella y albahaca fresca,3500,pizzas,true,https://example.com/pizza-margherita.jpg
+PIZZA-002,Pizza Napolitana,Mozzarella napolitana con tomate en rodajas y orégano,3800,pizzas,true,https://example.com/pizza-napolitana.jpg
+PIZZA-003,Pizza Fugazzeta,Cebolla salteada con abundante mozzarella,4200,pizzas,true,https://example.com/pizza-fugazzeta.jpg
+BURGER-001,Hamburguesa Clásica,Medallón de carne con lechuga tomate y cebolla,2800,hamburguesas,true,https://example.com/burger-clasica.jpg
+BURGER-002,Hamburguesa Completa,Con jamón queso huevo y panceta,3500,hamburguesas,true,https://example.com/burger-completa.jpg
+PASTA-001,Ravioles de Ricota,Con salsa a elección (tuco fileto o crema),3200,pastas,true,https://example.com/ravioles.jpg
+PASTA-002,Sorrentinos de Jamón y Queso,Con salsa a elección,3400,pastas,true,https://example.com/sorrentinos.jpg
+PASTA-003,Ñoquis de Papa,Con salsa a elección,2800,pastas,true,https://example.com/ñoquis.jpg
+ENS-001,Ensalada César,Lechuga romana parmesano croutons y aderezo césar,2500,ensaladas,true,https://example.com/cesar.jpg
+ENS-002,Ensalada Mixta,Lechuga tomate cebolla zanahoria y huevo,2200,ensaladas,true,https://example.com/mixta.jpg
+BEB-001,Coca Cola 500ml,Gaseosa,800,bebidas,true,https://example.com/coca.jpg
+BEB-002,Agua Mineral 500ml,Agua sin gas,600,bebidas,true,https://example.com/agua.jpg
+BEB-003,Cerveza Quilmes 1L,Cerveza rubia,1500,bebidas,true,https://example.com/quilmes.jpg
+POST-001,Flan Casero,Con dulce de leche o crema,1200,postres,true,https://example.com/flan.jpg
+POST-002,Helado 2 Bochas,Sabor a elección,1000,postres,true,https://example.com/helado.jpg

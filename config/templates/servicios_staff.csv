@@ -1,0 +1,5 @@
+name,email,phone,role,is_active,google_calendar_id,skills
+María García,maria.garcia@peluqueria.com,+5491123456789,Peluquera Senior,true,maria.garcia@gmail.com,"[""corte"",""coloración"",""brushing""]"
+Juan Pérez,juan.perez@peluqueria.com,+5491198765432,Peluquero,true,juan.perez@gmail.com,"[""corte"",""barba""]"
+Ana López,ana.lopez@peluqueria.com,+5491187654321,Estilista,true,ana.lopez@gmail.com,"[""coloración"",""mechas"",""tratamientos""]"
+Carlos Martínez,carlos.martinez@peluqueria.com,+5491156781234,Barbero,true,carlos.martinez@gmail.com,"[""corte"",""barba"",""afeitado""]"
