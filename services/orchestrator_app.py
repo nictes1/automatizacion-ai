@@ -94,6 +94,7 @@ async def decide(
             conversation_id=request.conversation_id,
             vertical=request.vertical,
             user_input=request.user_input,
+            workspace_id=x_workspace_id or "550e8400-e29b-41d4-a716-446655440000",  # Default workspace
             greeted=greeted,
             slots=slots,
             objective=objective,

@@ -9,7 +9,7 @@ import hashlib
 import time
 import contextvars
 import os
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
 from enum import Enum
 import asyncio
@@ -17,6 +17,9 @@ import httpx
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 import asyncpg
+
+# Import tools
+from services.servicios_tools import SERVICIOS_TOOLS, execute_tool
 
 # Contexto por request (thread-safe, async-safe)
 REQUEST_CONTEXT: contextvars.ContextVar[dict] = contextvars.ContextVar("REQUEST_CONTEXT", default={})
@@ -58,6 +61,7 @@ class ConversationSnapshot(BaseModel):
     conversation_id: str
     vertical: str
     user_input: str
+    workspace_id: str  # Workspace context para tools
     greeted: bool
     slots: Dict[str, Any]
     objective: str
@@ -194,15 +198,27 @@ class PolicyEngine:
         # 3) Si todos los requeridos están completos:
         all_required_ready = all(snapshot.slots.get(s) for s in required_slots)
 
-        # 3.a) ¿Necesitamos RAG antes de accionar? (depende del vertical)
+        # 3.a) ¿Necesitamos validación antes de accionar? (Tool o RAG según vertical)
         if all_required_ready and cfg["needs_rag_before_action"] and not snapshot.slots.get("_validated_by_rag"):
-            # Buscamos contexto para validar/precios/disponibilidad
-            return NextStep(
-                next_action=NextAction.RETRIEVE_CONTEXT,
-                args={"query": self._build_query_from_slots(snapshot),
-                      "filters": self._build_filters_from_slots(snapshot)},
-                reason="Validar con RAG antes de accionar"
-            )
+            # Para servicios: usar tool, para otros: RAG
+            tool_name, tool_args = self._decide_tool(snapshot)
+
+            if tool_name:
+                # Usar tool (servicios)
+                return NextStep(
+                    next_action=NextAction.RETRIEVE_CONTEXT,
+                    args={"tool_name": tool_name, "tool_args": tool_args, "use_tool": True},
+                    reason=f"Validar con tool: {tool_name}"
+                )
+            else:
+                # Usar RAG (gastronomía, inmobiliaria)
+                return NextStep(
+                    next_action=NextAction.RETRIEVE_CONTEXT,
+                    args={"query": self._build_query_from_slots(snapshot),
+                          "filters": self._build_filters_from_slots(snapshot),
+                          "use_tool": False},
+                    reason="Validar con RAG antes de accionar"
+                )
 
         # 3.b) Si estamos listos, accionamos
         if all_required_ready:
@@ -212,14 +228,26 @@ class PolicyEngine:
                 reason="Slots requeridos completos"
             )
 
-        # 4) Si no hay requeridos, pero sí hay señales parciales → intentar RAG para ayudar
+        # 4) Si no hay requeridos, pero sí hay señales parciales → intentar obtener info (Tool o RAG)
         if self._has_slots_for_query(snapshot):
-            return NextStep(
-                next_action=NextAction.RETRIEVE_CONTEXT,
-                args={"query": self._build_query_from_slots(snapshot),
-                      "filters": self._build_filters_from_slots(snapshot)},
-                reason="Slots suficientes para orientar consulta RAG"
-            )
+            tool_name, tool_args = self._decide_tool(snapshot)
+
+            if tool_name:
+                # Usar tool (servicios)
+                return NextStep(
+                    next_action=NextAction.RETRIEVE_CONTEXT,
+                    args={"tool_name": tool_name, "tool_args": tool_args, "use_tool": True},
+                    reason=f"Obtener info con tool: {tool_name}"
+                )
+            else:
+                # Usar RAG (gastronomía, inmobiliaria)
+                return NextStep(
+                    next_action=NextAction.RETRIEVE_CONTEXT,
+                    args={"query": self._build_query_from_slots(snapshot),
+                          "filters": self._build_filters_from_slots(snapshot),
+                          "use_tool": False},
+                    reason="Slots suficientes para orientar consulta RAG"
+                )
 
         # 5) Intentos agotados → humano
         if snapshot.attempts_count >= max_attempts:
@@ -299,6 +327,148 @@ class PolicyEngine:
                 m["service_type"] = snapshot.slots["service_type"]
 
         return {"metadata": m} if m else {}
+
+    def _decide_tool(self, snapshot: ConversationSnapshot) -> Tuple[Optional[str], Dict[str, Any]]:
+        """
+        Decide qué tool llamar basado en slots y vertical
+
+        Returns:
+            (tool_name, tool_args) o (None, {}) si no aplica tool
+        """
+        if snapshot.vertical != "servicios":
+            # Otros verticales usan RAG por ahora
+            return (None, {})
+
+        workspace_id = snapshot.workspace_id
+        slots = snapshot.slots
+        user_input_lower = snapshot.user_input.lower()
+
+        # Si no tiene servicio → listar servicios disponibles
+        if not slots.get("service_type"):
+            return ("get_available_services", {"workspace_id": workspace_id})
+
+        # Si tiene servicio + fecha → verificar disponibilidad
+        if slots.get("service_type") and slots.get("preferred_date"):
+            return ("check_service_availability", {
+                "workspace_id": workspace_id,
+                "service_name": slots["service_type"],
+                "date_str": slots["preferred_date"],
+                "time_str": slots.get("preferred_time")
+            })
+
+        # Si pregunta por promociones
+        if any(word in user_input_lower for word in ["promocion", "promo", "descuento", "oferta"]):
+            return ("get_active_promotions", {"workspace_id": workspace_id})
+
+        # Si pregunta por paquetes
+        if any(word in user_input_lower for word in ["paquete", "combo", "pack"]):
+            return ("get_service_packages", {"workspace_id": workspace_id})
+
+        # Si pregunta por horarios
+        if any(word in user_input_lower for word in ["horario", "abr", "cierr", "atiend"]):
+            return ("get_business_hours", {"workspace_id": workspace_id})
+
+        # Default: listar servicios
+        return ("get_available_services", {"workspace_id": workspace_id})
+
+    def _format_tool_result(self, tool_result: Dict[str, Any]) -> str:
+        """
+        Formatea resultado de tool para el prompt del LLM
+
+        Args:
+            tool_result: Resultado del tool
+
+        Returns:
+            String formateado para incluir en el prompt
+        """
+        if not tool_result.get("success"):
+            return f"[ERROR] {tool_result.get('error', 'Error desconocido')}"
+
+        # get_available_services
+        if "services" in tool_result:
+            services = tool_result["services"]
+            if not services:
+                return "[INFO] No hay servicios disponibles en este momento."
+
+            text = "[SERVICIOS DISPONIBLES]\n"
+            for svc in services:
+                text += f"• {svc['name']}: ${svc['price']} ({svc['duration_minutes']} minutos)\n"
+                if svc.get('description'):
+                    text += f"  {svc['description']}\n"
+            return text.strip()
+
+        # check_service_availability
+        if "time_slots" in tool_result:
+            service_info = tool_result.get("service_info", {})
+            if tool_result["available"]:
+                slots = tool_result["time_slots"]
+                text = f"[DISPONIBILIDAD PARA {service_info.get('name', 'servicio')}]\n"
+                text += f"Precio: ${service_info.get('price', 0)}\n"
+                text += f"Duración: {service_info.get('duration_minutes', 0)} minutos\n"
+                text += f"Horarios disponibles: {', '.join(slots[:8])}"  # Primeros 8
+                if len(slots) > 8:
+                    text += f" (y {len(slots)-8} más)"
+                return text
+            else:
+                return f"[NO DISPONIBLE] {tool_result.get('reason', 'Sin disponibilidad en ese horario')}"
+
+        # get_service_packages
+        if "packages" in tool_result:
+            packages = tool_result["packages"]
+            if not packages:
+                return "[INFO] No hay paquetes disponibles."
+
+            text = "[PAQUETES DISPONIBLES]\n"
+            for pkg in packages:
+                text += f"• {pkg['name']}: ${pkg['package_price']}\n"
+                text += f"  Incluye: {', '.join(pkg['services'])}\n"
+                if pkg.get('savings'):
+                    text += f"  Ahorrás: ${pkg['savings']}\n"
+            return text.strip()
+
+        # get_active_promotions
+        if "promotions" in tool_result:
+            promos = tool_result["promotions"]
+            if not promos:
+                return "[INFO] No hay promociones activas en este momento."
+
+            text = "[PROMOCIONES ACTIVAS]\n"
+            for promo in promos:
+                text += f"• {promo['name']}: "
+                if promo["discount_type"] == "percentage":
+                    text += f"{promo['discount_value']}% OFF\n"
+                elif promo["discount_type"] == "fixed_amount":
+                    text += f"${promo['discount_value']} de descuento\n"
+                else:
+                    text += f"Servicio gratis\n"
+
+                if promo.get('description'):
+                    text += f"  {promo['description']}\n"
+            return text.strip()
+
+        # get_business_hours
+        if "hours" in tool_result:
+            hours = tool_result["hours"]
+            text = "[HORARIOS DE ATENCIÓN]\n"
+            day_names_es = {
+                "monday": "Lunes", "tuesday": "Martes", "wednesday": "Miércoles",
+                "thursday": "Jueves", "friday": "Viernes", "saturday": "Sábado", "sunday": "Domingo"
+            }
+
+            for day_en, day_es in day_names_es.items():
+                if day_en in hours:
+                    day_info = hours[day_en]
+                    if day_info.get("open"):
+                        blocks = day_info.get("blocks", [])
+                        times = ", ".join([f"{b['open']}-{b['close']}" for b in blocks])
+                        text += f"{day_es}: {times}\n"
+                    else:
+                        text += f"{day_es}: Cerrado\n"
+
+            return text.strip()
+
+        # Default: JSON dump
+        return f"[TOOL RESULT]\n{json.dumps(tool_result, ensure_ascii=False, indent=2)}"
 
     def _get_action_name(self, vertical: str) -> str:
         actions = {
@@ -1187,24 +1357,48 @@ REGLAS CRÍTICAS:
         )
     
     async def _handle_retrieve_context(self, snapshot: ConversationSnapshot, step: NextStep) -> OrchestratorResponse:
-        """Consulta RAG + compone respuesta breve"""
-        query = step.args.get("query") or snapshot.user_input
-        filters = step.args.get("filters") or {}
+        """Consulta Tool o RAG según vertical + compone respuesta breve"""
 
-        # Normalizar slots antes de llamar a RAG (consistencia)
+        # Normalizar slots antes de continuar
         norm_slots = self._normalize_slots(snapshot.vertical, snapshot.slots)
-        
-        # Medir tiempo de RAG
-        t0 = time.perf_counter()
-        rag_results = await self.tools_client.retrieve_context(
-            conversation_id=snapshot.conversation_id,
-            query=query,
-            slots=norm_slots,
-            filters=filters,
-            top_k=8
-        )
-        rag_ms = int((time.perf_counter() - t0) * 1000)
-        self._telemetry_add("rag_ms", rag_ms)
+
+        # Decidir si usar tool o RAG
+        use_tool = step.args.get("use_tool", False)
+
+        if use_tool:
+            # ========== USAR TOOL (Servicios) ==========
+            tool_name = step.args.get("tool_name")
+            tool_args = step.args.get("tool_args", {})
+
+            logger.info(f"[TOOL] Llamando tool: {tool_name} con args: {tool_args}")
+
+            # Medir tiempo de tool
+            t0 = time.perf_counter()
+            tool_result = await execute_tool(tool_name, **tool_args)
+            tool_ms = int((time.perf_counter() - t0) * 1000)
+            self._telemetry_add("rag_ms", tool_ms)  # Usamos mismo campo para stats
+
+            # Formatear resultado para el LLM
+            context_text = self.policy_engine._format_tool_result(tool_result)
+
+            logger.info(f"[TOOL] Resultado: success={tool_result.get('success')}, context_len={len(context_text)}")
+
+        else:
+            # ========== USAR RAG (Gastronomía, Inmobiliaria) ==========
+            query = step.args.get("query") or snapshot.user_input
+            filters = step.args.get("filters") or {}
+
+            # Medir tiempo de RAG
+            t0 = time.perf_counter()
+            rag_results = await self.tools_client.retrieve_context(
+                conversation_id=snapshot.conversation_id,
+                query=query,
+                slots=norm_slots,
+                filters=filters,
+                top_k=8
+            )
+            rag_ms = int((time.perf_counter() - t0) * 1000)
+            self._telemetry_add("rag_ms", rag_ms)
 
         # Heurística mínima con score de RAG (configurable por vertical)
         cfg = self.policy_engine.vertical_configs.get(snapshot.vertical, {})
