@@ -130,6 +130,12 @@ python scripts/test_crear_pedido.py
 
 # Validate n8n workflow
 python scripts/validate_workflow.py
+
+# AI Client Simulated Tests (Recommended)
+# Tests conversacionales realistas con múltiples escenarios
+./scripts/run_ai_tests.sh
+# O directamente:
+python3 tests/test_ai_client_scenarios.py
 ```
 
 ### Ollama Model Management
@@ -139,9 +145,9 @@ python scripts/validate_workflow.py
 docker exec pulpo-ollama ollama list
 
 # Pull required models
-docker exec pulpo-ollama ollama pull llama3.1:8b
-docker exec pulpo-ollama ollama pull qwen2.5:7b-instruct
-docker exec pulpo-ollama ollama pull nomic-embed-text
+docker exec pulpo-ollama ollama pull qwen2.5:14b    # Orchestrator (production)
+docker exec pulpo-ollama ollama pull llama3.1:8b    # AI Client simulation
+docker exec pulpo-ollama ollama pull nomic-embed-text  # RAG embeddings
 
 # Test generation
 echo "Hola, ¿cómo estás?" | docker exec -i pulpo-ollama ollama run llama3.1:8b
