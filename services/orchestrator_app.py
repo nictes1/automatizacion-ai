@@ -39,6 +39,8 @@ class DecideRequest(BaseModel):
     objective: str = ""
     last_action: Optional[str] = None
     attempts_count: int = 0
+    current_state: Optional[Dict[str, Any]] = None  # Alternativa para pasar estado completo
+    platform: Optional[str] = None  # whatsapp, telegram, web, etc
 
 class DecideResponse(BaseModel):
     assistant: str
@@ -70,17 +72,33 @@ async def decide(
             headers["x-workspace-id"] = x_workspace_id
         if x_request_id:
             headers["x-request-id"] = x_request_id
-        
+
+        # Merge current_state si existe (prioridad sobre campos individuales)
+        greeted = request.greeted
+        slots = dict(request.slots)
+        objective = request.objective
+        last_action = request.last_action
+        attempts_count = request.attempts_count
+
+        if request.current_state:
+            # current_state puede tener: greeted, slots, objective, last_action, attempts_count
+            greeted = request.current_state.get("greeted", greeted)
+            if "slots" in request.current_state:
+                slots.update(request.current_state["slots"])
+            objective = request.current_state.get("objective", objective)
+            last_action = request.current_state.get("last_action", last_action)
+            attempts_count = request.current_state.get("attempts_count", attempts_count)
+
         # Crear snapshot
         snapshot = ConversationSnapshot(
             conversation_id=request.conversation_id,
             vertical=request.vertical,
             user_input=request.user_input,
-            greeted=request.greeted,
-            slots=request.slots,
-            objective=request.objective,
-            last_action=request.last_action,
-            attempts_count=request.attempts_count
+            greeted=greeted,
+            slots=slots,
+            objective=objective,
+            last_action=last_action,
+            attempts_count=attempts_count
         )
         
         # Usar context manager para headers

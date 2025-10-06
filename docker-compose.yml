@@ -137,6 +137,8 @@ services:
       - REDIS_URL=redis://redis:6379
       - RAG_URL=http://rag:8007
       - ACTIONS_URL=http://actions:8006
+      - OLLAMA_URL=http://ollama:11434
+      - OLLAMA_MODEL=qwen2.5:14b
       - JWT_SECRET=your-secret-key-here
       - JWT_ALGORITHM=HS256
     depends_on:

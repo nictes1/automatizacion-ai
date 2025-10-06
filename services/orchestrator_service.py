@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from enum import Enum
 import asyncio
 import httpx
-from datetime import datetime
+from datetime import datetime, timedelta
 from pydantic import BaseModel
 import asyncpg
 
@@ -173,8 +173,13 @@ class PolicyEngine:
             )
 
         # 2) Detectar si el usuario quiere hacer algo concreto (pedido, reserva, etc)
-        # Si no hay objective_confirmed, no forzar slots requeridos
-        user_wants_action = snapshot.slots.get("objective_confirmed") or snapshot.slots.get("items") or snapshot.slots.get("categoria")
+        # Para servicios: si tiene service_type ya sabemos que quiere agendar
+        # Para gastronomía: si tiene items o categoría
+        user_wants_action = False
+        if snapshot.vertical == "servicios":
+            user_wants_action = bool(snapshot.slots.get("service_type") or snapshot.slots.get("preferred_date"))
+        else:
+            user_wants_action = snapshot.slots.get("objective_confirmed") or snapshot.slots.get("items") or snapshot.slots.get("categoria")
 
         # 2) Slots faltantes (solo si el usuario quiere hacer una acción)
         missing_slots = [s for s in required_slots if not snapshot.slots.get(s)]
@@ -310,11 +315,12 @@ class PolicyEngine:
 class LLMClient:
     """Cliente para comunicación con el LLM (Ollama)"""
 
-    def __init__(self, base_url: str = "http://ollama:11434", model: str = "llama3.1:8b"):
-        self.base_url = base_url
-        self.model = model
-        # Timeout más agresivo para LLM (3s)
-        self.client = httpx.AsyncClient(timeout=httpx.Timeout(3.0))
+    def __init__(self, base_url: str = None, model: str = None):
+        self.base_url = base_url or os.getenv("OLLAMA_URL", "http://localhost:11434")
+        # Usar modelo desde env o default a qwen2.5:14b (mejor para extracción)
+        self.model = model or os.getenv("OLLAMA_MODEL", "qwen2.5:14b")
+        # Timeout aumentado para modelos más grandes (10s)
+        self.client = httpx.AsyncClient(timeout=httpx.Timeout(10.0))
 
     async def generate_json(self, system_prompt: str, user_prompt: str, retry: bool = True) -> Optional[Dict[str, Any]]:
         """
@@ -712,15 +718,54 @@ TOOLS: list_properties, schedule_visit
         elif vertical == "servicios":
             base += """
 
-VERTICAL: SERVICIOS (Turnos)
-Tu rol: Agendar turnos como lo haría la recepcionista.
+VERTICAL: SERVICIOS - Peluquería
+Tu nombre: Sofía
+Tu rol: Recepcionista virtual de una peluquería moderna y acogedora.
 
-INFORMACIÓN NECESARIA:
-- Tipo de servicio (ej: corte, tintura, manicura)
-- Fecha y hora preferida
-- Profesional preferido (opcional)
+🎯 TU MISIÓN:
+- Ayudar a los clientes a agendar turnos de forma natural y eficiente
+- Extraer información necesaria de forma conversacional (no como formulario)
+- Ser cálida, cercana y profesional - como una recepcionista experta
 
-TOOLS: list_services, list_slots, book_slot
+💬 TU ESTILO DE COMUNICACIÓN:
+✓ Conversacional y cercano - como hablarías con un amigo
+✓ Breve y directo - estamos en WhatsApp (máximo 2-3 líneas)
+✓ Empático y servicial - el cliente es lo primero
+✓ Natural y humano - usa pausas, expresiones coloquiales ("genial", "perfecto", "dale")
+✓ Varía el largo de frases (unas cortas, otras un poco más largas)
+
+❌ EVITA:
+✗ Ser robótico o demasiado formal ("estimado cliente", "a la brevedad")
+✗ Párrafos largos
+✗ Repetir siempre la misma estructura
+✗ Tecnicismos innecesarios
+
+📋 INFORMACIÓN QUE NECESITAS PARA AGENDAR:
+- service_type: Servicio deseado (ej: "Corte de Cabello", "Coloración", "Brushing")
+- preferred_date: Fecha en formato YYYY-MM-DD (ej: "2025-10-07")
+- preferred_time: Hora en formato HH:MM (ej: "15:00")
+- client_name: Nombre del cliente
+- client_email: Email del cliente
+- client_phone: Teléfono (opcional)
+
+🔧 CÓMO TRABAJAR:
+1. Si el cliente ya dio información, reconócela y úsala (no preguntes de nuevo)
+2. Pregunta solo por lo que falta
+3. Si detectas intención de agendar, ayúdalo activamente
+4. Cuando tengas TODO, resume y confirma antes de agendar
+
+EJEMPLO DE CONVERSACIÓN NATURAL:
+Usuario: "Hola, necesito cortarme el pelo mañana a las 3pm"
+Tú: "¡Hola! Perfecto, te anoto para mañana a las 15hs para un corte. ¿Me pasás tu nombre y email?"
+Usuario: "Soy Pablo, pablo@gmail.com"
+Tú: "Genial Pablo! Confirmado tu turno para corte mañana 15hs. ¿Te mando la confirmación a pablo@gmail.com?"
+Usuario: "Dale"
+Tú: [ejecuta schedule_appointment] "¡Listo! Tu turno está confirmado. Te esperamos mañana a las 15hs 💈"
+
+IMPORTANTE:
+- Extrae TODA la información posible de cada mensaje del usuario
+- updated_state debe contener los campos que descubriste (service_type, preferred_date, preferred_time, client_name, client_email)
+- Solo marca end=true cuando hayas ejecutado schedule_appointment exitosamente
 """
 
         self._system_cache[vertical] = base
@@ -922,15 +967,83 @@ TOOLS: list_services, list_slots, book_slot
     # ---------- handlers ----------
 
     async def _handle_greet(self, snapshot: ConversationSnapshot) -> OrchestratorResponse:
-        """Saludo natural usando LLM"""
+        """Saludo natural usando LLM + extracción inteligente de slots"""
         sys = self._system_prompt(snapshot.vertical)
+
+        # Obtener lista de campos posibles para este vertical
+        cfg = self.policy_engine.vertical_configs.get(snapshot.vertical, {})
+        required = cfg.get("required_slots", [])
+        optional = cfg.get("optional_slots", [])
+
         usr = f"""
 Usuario dice: "{snapshot.user_input}"
 
 Contexto: Es el primer mensaje del usuario.
 
-Saluda de forma cordial y natural, presentándote brevemente según tu rol.
-Devuelve JSON con "reply" y opcionalmente "updated_state".
+TAREAS:
+1. Saluda de forma cordial y natural (según tu rol y estilo definido arriba)
+2. CRÍTICO: Lee el mensaje COMPLETO y extrae CADA dato que aparezca - nombres, emails, servicios, fechas, horas
+3. Si el usuario ya expresó una intención clara, reconócela en tu saludo
+4. Si detectas que falta información importante, menciónalo naturalmente
+
+CAMPOS QUE DEBES BUSCAR (extrae TODO lo que encuentres):
+- Requeridos: {', '.join(required)}
+- Opcionales: {', '.join(optional)}
+
+IMPORTANTE - INTERPRETACIÓN DE FECHAS Y HORAS:
+- Fechas relativas: "mañana" → "{(datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')}", "pasado mañana" → "{(datetime.now() + timedelta(days=2)).strftime('%Y-%m-%d')}"
+- Horas en español:
+  * "10am" → "10:00"
+  * "10 de la mañana" → "10:00"
+  * "3pm" → "15:00"
+  * "3 de la tarde" → "15:00"
+  * "5:30pm" → "17:30"
+  * "medio día" → "12:00"
+
+EJEMPLOS CRÍTICOS - Extracción de TIEMPO:
+
+Usuario: "necesito coloración mañana a las 10am"
+→ {{"service_type": "Coloración", "preferred_date": "{(datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')}", "preferred_time": "10:00"}}
+
+Usuario: "brushing a las 5pm"
+→ {{"service_type": "Brushing", "preferred_time": "17:00"}}
+
+Usuario: "corte mañana a las 2 de la tarde"
+→ {{"service_type": "Corte de Cabello", "preferred_date": "{(datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')}", "preferred_time": "14:00"}}
+
+EJEMPLO COMPLETO - Usuario da TODO:
+
+Usuario: "Hola, soy María López, necesito coloración mañana a las 10am, mi mail es maria.lopez@hotmail.com"
+updated_state CORRECTO:
+{{
+  "service_type": "Coloración",
+  "preferred_date": "{(datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')}",
+  "preferred_time": "10:00",
+  "client_name": "María López",
+  "client_email": "maria.lopez@hotmail.com"
+}}
+
+CONVERSIÓN DE HORAS (MEMORIZA):
+- "10am" = "10:00"
+- "3pm" = "15:00"
+- "5pm" = "17:00"
+- "2 de la tarde" = "14:00"
+- "3 de la tarde" = "15:00"
+
+Devuelve JSON:
+{{
+  "reply": "tu saludo conversacional (máximo 2-3 líneas)",
+  "updated_state": {{
+    // Incluir TODOS los campos que detectaste
+  }}
+}}
+
+REGLAS CRÍTICAS:
+✓ Extrae TODOS los datos presentes (nombres, emails, servicios, fechas, horas)
+✓ Lee el mensaje COMPLETO, no te detengas en la primera mitad
+✓ Un nombre es cualquier cosa que parezca nombre propio (ej: "María López", "Juan Pérez")
+✓ Un email es cualquier texto con @ (ej: "maria@gmail.com")
+✗ NO inventar información que no está en el mensaje
 """.strip()
 
         # Medir tiempo de LLM
@@ -951,6 +1064,7 @@ Devuelve JSON con "reply" y opcionalmente "updated_state".
             upd = self._filter_updated_state(snapshot.vertical, data.get("updated_state") if data else {})
             if upd:
                 new_slots.update(upd)
+                logger.info(f"[GREET] ✅ Slots extraídos del primer mensaje: {upd}")
 
         return OrchestratorResponse(
             assistant=self._clip_reply(greeting),
@@ -964,15 +1078,69 @@ Devuelve JSON con "reply" y opcionalmente "updated_state".
     async def _handle_slot_fill(self, snapshot: ConversationSnapshot, step: NextStep, inc_attempt: bool) -> OrchestratorResponse:
         """Pedir un slot puntual con LLM, validando JSON de salida"""
         ask_for = step.args.get("ask_for", "")
+        missing_slots = step.args.get("missing_slots", [])
+
+        # Obtener campos posibles para este vertical
+        cfg = self.policy_engine.vertical_configs.get(snapshot.vertical, {})
+        required = cfg.get("required_slots", [])
+        optional = cfg.get("optional_slots", [])
+
         sys = self._system_prompt(snapshot.vertical)
         usr = f"""
 Usuario dice: "{snapshot.user_input}"
 
-Slots actuales: {json.dumps(snapshot.slots, ensure_ascii=False)}
-Necesitas obtener información sobre: {ask_for}
+Contexto:
+- Slots actuales: {json.dumps(snapshot.slots, ensure_ascii=False)}
+- Slots que faltan: {', '.join(missing_slots)}
+- Estás pidiendo específicamente: {ask_for}
 
-Pide SOLO esa información, en una oración, tono cordial. 
-Devuelve JSON con "reply" y "updated_state" si el usuario ya la dio.
+TAREAS:
+1. CRÍTICO: Lee el mensaje COMPLETO y extrae CADA dato presente
+   - Campos requeridos: {', '.join(required)}
+   - Campos opcionales: {', '.join(optional)}
+   - NO te limites a {ask_for} - extrae TODO
+
+2. Genera respuesta natural:
+   - Si usuario dio {ask_for}: reconócelo y agradece
+   - Si usuario dio OTRO dato útil (aunque no sea {ask_for}): reconócelo igual
+   - Si no dio nada útil: pide {ask_for} de nuevo
+
+3. Si todavía falta info: pregunta por el siguiente campo faltante
+
+EJEMPLOS DE EXTRACCIÓN:
+
+Ejemplo A - Usuario responde con OTRO dato:
+Preguntaste: preferred_time
+Usuario dice: "Mi nombre es Pablo Martínez"
+updated_state CORRECTO: {{"client_name": "Pablo Martínez"}}
+reply: "Genial Pablo! ¿Y a qué hora te gustaría venir?"
+
+Ejemplo B - Usuario da MÚLTIPLES datos:
+Preguntaste: preferred_time
+Usuario dice: "Soy Ana García, ana@gmail.com, a las 3pm estaría bien"
+updated_state CORRECTO: {{"client_name": "Ana García", "client_email": "ana@gmail.com", "preferred_time": "15:00"}}
+reply: "Perfecto Ana! Te anoto para las 3pm"
+
+Ejemplo C - Usuario confirma sin dar info nueva:
+Preguntaste: preferred_time
+Usuario dice: "Sí, confirmá por favor"
+updated_state CORRECTO: {{}} (vacío, no hay nueva info)
+reply: "Para confirmar necesito saber a qué hora prefieres venir"
+
+Devuelve JSON:
+{{
+  "reply": "tu respuesta conversacional (máximo 2-3 líneas)",
+  "updated_state": {{
+    // TODOS los campos que detectaste (puede ser más de uno)
+  }}
+}}
+
+REGLAS CRÍTICAS:
+✓ Lee el mensaje COMPLETO - nombres, emails, fechas, horas
+✓ Extrae TODO, no solo {ask_for}
+✓ Un email es cualquier texto con @
+✓ Horarios: "3pm"/"3 de la tarde" → "15:00", "10am"/"10 de la mañana" → "10:00"
+✗ NO inventar información
 """.strip()
 
         # Medir tiempo de LLM
@@ -1004,6 +1172,7 @@ Devuelve JSON con "reply" y "updated_state" si el usuario ya la dio.
             # Reset validación si cambian slots críticos
             new_slots = self._maybe_reset_validation(snapshot.slots, {**new_slots, **upd}, snapshot.vertical)
             new_slots.update(upd)
+            logger.info(f"[SLOT_FILL] ✅ Slots extraídos: {upd}")
 
         reply = data.get("reply") or f"¿Podrías decirme {ask_for}?"
         # Normalizar slots después de merge

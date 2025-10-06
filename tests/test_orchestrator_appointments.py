@@ -80,6 +80,15 @@ async def test_appointment_conversation():
         print(f"📊 Slots: {response.get('slots', {})}")
         print(f"🎯 Next Action: {response.get('next_action')}")
 
+        # Construir estado completo para el siguiente turno
+        current_state = {
+            "greeted": True,
+            "slots": response.get('slots', {}),
+            "objective": response.get('objective', ''),
+            "last_action": response.get('next_action'),
+            "attempts_count": 0
+        }
+
         # Turno 2: Proporcionar nombre
         if "nombre" in response['assistant'].lower() or "client_name" not in response.get('slots', {}):
             print("\n" + "─" * 70)
@@ -89,12 +98,21 @@ async def test_appointment_conversation():
             response = await send_message(
                 client, conversation_id,
                 "Mi nombre es Pablo Martínez",
-                current_state=response.get('slots', {})
+                current_state=current_state
             )
 
             print(f"🤖 Asistente: {response['assistant']}")
             print(f"📊 Slots: {response.get('slots', {})}")
             print(f"🎯 Next Action: {response.get('next_action')}")
+
+            # Actualizar estado
+            current_state = {
+                "greeted": True,
+                "slots": response.get('slots', {}),
+                "objective": response.get('objective', ''),
+                "last_action": response.get('next_action'),
+                "attempts_count": 0
+            }
 
         # Turno 3: Proporcionar email
         if "email" in response['assistant'].lower() or "client_email" not in response.get('slots', {}):
@@ -105,12 +123,21 @@ async def test_appointment_conversation():
             response = await send_message(
                 client, conversation_id,
                 "Mi email es pablo.martinez@gmail.com",
-                current_state=response.get('slots', {})
+                current_state=current_state
             )
 
             print(f"🤖 Asistente: {response['assistant']}")
             print(f"📊 Slots: {response.get('slots', {})}")
             print(f"🎯 Next Action: {response.get('next_action')}")
+
+            # Actualizar estado
+            current_state = {
+                "greeted": True,
+                "slots": response.get('slots', {}),
+                "objective": response.get('objective', ''),
+                "last_action": response.get('next_action'),
+                "attempts_count": 0
+            }
 
         # Turno 4: Confirmar/ejecutar
         print("\n" + "─" * 70)
@@ -120,7 +147,7 @@ async def test_appointment_conversation():
         response = await send_message(
             client, conversation_id,
             "Sí, confirmá por favor",
-            current_state=response.get('slots', {})
+            current_state=current_state
         )
 
         print(f"🤖 Asistente: {response['assistant']}")
