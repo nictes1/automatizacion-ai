@@ -1,0 +1,746 @@
+[
+  {
+    "scenario_id": "servicios_efficient",
+    "scenario_name": "Cliente Eficiente - Peluquería",
+    "success": false,
+    "turns": 2,
+    "slots_collected": {
+      "greeted": true,
+      "service_type": "Corte de Cabello",
+      "preferred_date": "2025-10-08",
+      "preferred_time": "15:00",
+      "client_name": "María González",
+      "client_email": "maria.gonzalez@gmail.com",
+      "_intent": "execute_action",
+      "_intent_confidence": 0.95,
+      "_intent_reason": "Solicita confirmar reserva enviando información por correo.",
+      "_attempts_count": 1
+    },
+    "slots_expected": [
+      "service_type",
+      "preferred_date",
+      "preferred_time",
+      "client_name",
+      "client_email"
+    ],
+    "slots_missing": [],
+    "final_action": "ASK_HUMAN",
+    "error": null,
+    "duration_seconds": 7.347690872997191,
+    "conversation_log": [
+      {
+        "role": "user",
+        "content": "Hola, soy María González, necesito Corte de Cabello mañana a las 3 de la tarde, mi email es maria.gonzalez@gmail.com"
+      },
+      {
+        "role": "assistant",
+        "content": "¡Hola María! Perfecto, te anoto para mañana a las 15hs para un corte de cabello. ¿Te mando la confirmación a maria.gonzalez@gmail.com?",
+        "slots": {
+          "greeted": true,
+          "service_type": "Corte de Cabello",
+          "preferred_date": "2025-10-08",
+          "preferred_time": "15:00",
+          "client_name": "María González",
+          "client_email": "maria.gonzalez@gmail.com"
+        }
+      },
+      {
+        "role": "user",
+        "content": "Sí, mandármela a maria.gonzalez@gmail.com."
+      },
+      {
+        "role": "assistant",
+        "content": "No pude completar la acción. ¿Querés que te derive con un humano?",
+        "slots": {
+          "greeted": true,
+          "service_type": "Corte de Cabello",
+          "preferred_date": "2025-10-08",
+          "preferred_time": "15:00",
+          "client_name": "María González",
+          "client_email": "maria.gonzalez@gmail.com",
+          "_intent": "execute_action",
+          "_intent_confidence": 0.95,
+          "_intent_reason": "Solicita confirmar reserva enviando información por correo.",
+          "_attempts_count": 1
+        }
+      }
+    ]
+  },
+  {
+    "scenario_id": "servicios_conversational",
+    "scenario_name": "Cliente Conversacional - Peluquería",
+    "success": false,
+    "turns": 4,
+    "slots_collected": {
+      "greeted": true,
+      "service_type": "Corte de Cabello",
+      "client_name": "Juan Pérez",
+      "_intent": "execute_action",
+      "_intent_confidence": 0.95,
+      "_intent_reason": "Confirmación y provisión de datos para acción previa.",
+      "_attempts_count": 3,
+      "preferred_date": "Hoy +2 días",
+      "preferred_time": "10:00"
+    },
+    "slots_expected": [
+      "service_type",
+      "preferred_date",
+      "preferred_time",
+      "client_name",
+      "client_email"
+    ],
+    "slots_missing": [
+      "client_email"
+    ],
+    "final_action": "ASK_HUMAN",
+    "error": null,
+    "duration_seconds": 9.501154024997959,
+    "conversation_log": [
+      {
+        "role": "user",
+        "content": "Hola, quiero sacar un turno para cortarme el pelo"
+      },
+      {
+        "role": "assistant",
+        "content": "¡Hola! Perfecto, te anoto para un corte de cabello. ¿Me pasás tu nombre y cuándo te gustaría venir?",
+        "slots": {
+          "greeted": true,
+          "service_type": "Corte de Cabello",
+          "client_name": ""
+        }
+      },
+      {
+        "role": "user",
+        "content": "Mi nombre es Juan Pérez y me gustaría venir pasado mañana a la mañana."
+      },
+      {
+        "role": "assistant",
+        "content": "¡Hola Juan! Perfecto, te anoto para pasado mañana por la mañana. ¿A qué hora te gustaría venir exactamente?",
+        "slots": {
+          "greeted": true,
+          "service_type": "Corte de Cabello",
+          "client_name": "Juan Pérez",
+          "_intent": "execute_action",
+          "_intent_confidence": 0.95,
+          "_intent_reason": "Cliente indica acción concreta y fecha específica.",
+          "_attempts_count": 1,
+          "preferred_date": "Hoy +2 días"
+        }
+      },
+      {
+        "role": "user",
+        "content": "Me gustaría venir a las 10:00."
+      },
+      {
+        "role": "assistant",
+        "content": "Perfecto, te anoto para mañana a las 10:00. ¿Me pasás tu nombre y email para confirmar?",
+        "slots": {
+          "greeted": true,
+          "service_type": "Corte de Cabello",
+          "client_name": "Juan Pérez",
+          "_intent": "execute_action",
+          "_intent_confidence": 0.95,
+          "_intent_reason": "Cliente indica acción concreta y fecha específica.",
+          "_attempts_count": 2,
+          "preferred_date": "Hoy +2 días",
+          "preferred_time": "10:00"
+        }
+      },
+      {
+        "role": "user",
+        "content": "¡Genial! Ya se anotó todo. No me preocupa pasar el email, lo tengo listo: juan.perez@hotmail.com"
+      },
+      {
+        "role": "assistant",
+        "content": "No pude completar la acción. ¿Querés que te derive con un humano?",
+        "slots": {
+          "greeted": true,
+          "service_type": "Corte de Cabello",
+          "client_name": "Juan Pérez",
+          "_intent": "execute_action",
+          "_intent_confidence": 0.95,
+          "_intent_reason": "Confirmación y provisión de datos para acción previa.",
+          "_attempts_count": 3,
+          "preferred_date": "Hoy +2 días",
+          "preferred_time": "10:00"
+        }
+      }
+    ]
+  },
+  {
+    "scenario_id": "servicios_forgetful",
+    "scenario_name": "Cliente Olvidadizo - Peluquería",
+    "success": false,
+    "turns": 3,
+    "slots_collected": {
+      "greeted": true,
+      "service_type": "Brushing",
+      "preferred_date": "2025-10-10",
+      "client_name": "Ana Rodríguez",
+      "_intent": "execute_action",
+      "_intent_confidence": 0.85,
+      "_intent_reason": "Cliente indica enviar información por correo, manteniendo la acción inicial.",
+      "_attempts_count": 2,
+      "preferred_time": "16:30"
+    },
+    "slots_expected": [
+      "service_type",
+      "preferred_date",
+      "preferred_time",
+      "client_name",
+      "client_email"
+    ],
+    "slots_missing": [
+      "client_email"
+    ],
+    "final_action": "ASK_HUMAN",
+    "error": null,
+    "duration_seconds": 10.181161224001698,
+    "conversation_log": [
+      {
+        "role": "user",
+        "content": "Hola! Me llamo Ana Rodríguez y estoy interesada en agendar el brushing para el jueves a la tarde... Creo que era más temprano pero no me acuerdo exactamente qué hora quedamos. ¿Podrías decirme la hora exacta del jueves?"
+      },
+      {
+        "role": "assistant",
+        "content": "¡Hola Ana! Estupendo, te anoto para el jueves. El servicio que elegiste fue el brushing y me comentaste que era a la tarde, pero no recordás exactamente qué hora quedamos. ¿Podría ser después de las 14:00 o prefieres una horita más temprano? 😊",
+        "slots": {
+          "greeted": true,
+          "service_type": "Brushing",
+          "preferred_date": "2025-10-10",
+          "client_name": "Ana Rodríguez"
+        }
+      },
+      {
+        "role": "user",
+        "content": "Me parece que es más tarde de eso. ¿Sabés qué? Me he olvidado muchas veces mi propia agenda y no sé por qué me preocupa tanto recordar la hora exacta del jueves, pero sí puedo decirte que es a las 4:30 PM el jueves. Y si te digo cuándo es, seguro que necesitaré recordarte también la hora de nuestro meeting con mi jefa para hablar sobre el trabajo..."
+      },
+      {
+        "role": "assistant",
+        "content": "¡Claro Ana! Entendido, tu turno será el jueves a las 16:30 para un brushing. ¿Es correcto que te envíe la confirmación a tu email?",
+        "slots": {
+          "greeted": true,
+          "service_type": "Brushing",
+          "preferred_date": "2025-10-10",
+          "client_name": "Ana Rodríguez",
+          "_intent": "execute_action",
+          "_intent_confidence": 0.95,
+          "_intent_reason": "Cliente especifica hora concreta para cita de servicios.",
+          "_attempts_count": 1,
+          "preferred_time": "16:30"
+        }
+      },
+      {
+        "role": "user",
+        "content": "Bueno, creo que sí estaría bien que me lo manden a mi email. Pero tengo un problema con el correo electrónico ahora mismo, estoy cambiando de proveedor y la cuenta de Gmail está aún en proceso..."
+      },
+      {
+        "role": "assistant",
+        "content": "No pude completar la acción. ¿Querés que te derive con un humano?",
+        "slots": {
+          "greeted": true,
+          "service_type": "Brushing",
+          "preferred_date": "2025-10-10",
+          "client_name": "Ana Rodríguez",
+          "_intent": "execute_action",
+          "_intent_confidence": 0.85,
+          "_intent_reason": "Cliente indica enviar información por correo, manteniendo la acción inicial.",
+          "_attempts_count": 2,
+          "preferred_time": "16:30"
+        }
+      }
+    ]
+  },
+  {
+    "scenario_id": "servicios_chaotic",
+    "scenario_name": "Cliente Caótico - Peluquería",
+    "success": false,
+    "turns": 2,
+    "slots_collected": {
+      "greeted": true,
+      "service_type": [
+        "Corte de Cabello",
+        "Barba"
+      ],
+      "preferred_date": "2025-10-08",
+      "preferred_time": "11:00",
+      "client_name": "Carlos Martínez",
+      "client_email": "carlos.m@gmail.com",
+      "_intent": "info_query",
+      "_intent_confidence": 0.95,
+      "_intent_reason": "Pregunta sobre estado de la cita agendada",
+      "_attempts_count": 1
+    },
+    "slots_expected": [
+      "service_type",
+      "preferred_date",
+      "preferred_time",
+      "client_name",
+      "client_email"
+    ],
+    "slots_missing": [],
+    "final_action": "ASK_HUMAN",
+    "error": null,
+    "duration_seconds": 4.354233104000741,
+    "conversation_log": [
+      {
+        "role": "user",
+        "content": "mañana 11am carlos.m@gmail.com Carlos Martínez Corte y Barba"
+      },
+      {
+        "role": "assistant",
+        "content": "¡Hola Carlos! Perfecto, te anoto para mañana a las 11am. Querías un corte y barba, ¿correcto? Además ya tienes tu email guardado como carlos.m@gmail.com.",
+        "slots": {
+          "greeted": true,
+          "service_type": [
+            "Corte de Cabello",
+            "Barba"
+          ],
+          "preferred_date": "2025-10-08",
+          "preferred_time": "11:00",
+          "client_name": "Carlos Martínez",
+          "client_email": "carlos.m@gmail.com"
+        }
+      },
+      {
+        "role": "user",
+        "content": "Sí, así es. Mañana a las 11am. ¿Está todo listo para mañana?"
+      },
+      {
+        "role": "assistant",
+        "content": "No pude completar la acción. ¿Querés que te derive con un humano?",
+        "slots": {
+          "greeted": true,
+          "service_type": [
+            "Corte de Cabello",
+            "Barba"
+          ],
+          "preferred_date": "2025-10-08",
+          "preferred_time": "11:00",
+          "client_name": "Carlos Martínez",
+          "client_email": "carlos.m@gmail.com",
+          "_intent": "info_query",
+          "_intent_confidence": 0.95,
+          "_intent_reason": "Pregunta sobre estado de la cita agendada",
+          "_attempts_count": 1
+        }
+      }
+    ]
+  },
+  {
+    "scenario_id": "servicios_brief",
+    "scenario_name": "Cliente Breve - Peluquería",
+    "success": false,
+    "turns": 7,
+    "slots_collected": {
+      "greeted": true,
+      "service_type": "Manicura",
+      "client_name": "Laura",
+      "_intent": "execute_action",
+      "_intent_confidence": 0.9,
+      "_intent_reason": "Confirmación implícita de acción previa.",
+      "_attempts_count": 3,
+      "preferred_date": "2025-10-06",
+      "preferred_time": "14:00"
+    },
+    "slots_expected": [
+      "service_type",
+      "preferred_date",
+      "preferred_time",
+      "client_name",
+      "client_email"
+    ],
+    "slots_missing": [
+      "client_email"
+    ],
+    "final_action": "ASK_HUMAN",
+    "error": null,
+    "duration_seconds": 19.38286744799916,
+    "conversation_log": [
+      {
+        "role": "user",
+        "content": "Hola ¿manicura disponible?"
+      },
+      {
+        "role": "assistant",
+        "content": "¡Hola! ¿Cómo estás? Estoy aquí para ayudarte. Querías saber sobre la manicura, ¿verdad?",
+        "slots": {
+          "greeted": true,
+          "service_type": "Manicura",
+          "client_name": ""
+        }
+      },
+      {
+        "role": "user",
+        "content": "Sí"
+      },
+      {
+        "role": "assistant",
+        "content": "¡Claro! ¿Podrías decirme tu nombre para poder reservar la manicura para ti?",
+        "slots": {
+          "greeted": true,
+          "service_type": "Manicura",
+          "client_name": "",
+          "_intent": "general_chat",
+          "_intent_confidence": 0.95,
+          "_intent_reason": "Mensaje 'Sí' sin contexto claro, probable respuesta general.",
+          "_validated_by_rag": true
+        }
+      },
+      {
+        "role": "user",
+        "content": "Laura"
+      },
+      {
+        "role": "assistant",
+        "content": "¡Hola Laura! ¿En qué te puedo ayudar hoy? Si querés una manicura, tenemos varios horarios disponibles.",
+        "slots": {
+          "greeted": true,
+          "service_type": "Manicura",
+          "client_name": "Laura",
+          "_intent": "general_chat",
+          "_intent_confidence": 0.95,
+          "_intent_reason": "Nombre sin contexto, probable saludo.",
+          "_validated_by_rag": true
+        }
+      },
+      {
+        "role": "user",
+        "content": "Manicura"
+      },
+      {
+        "role": "assistant",
+        "content": "¡Hola Laura! Perfecto, te anoto para una manicura. Nuestro servicio de manicura es a $2500. ¿Cuándo te gustaría venir? Hoy, mañana o algún otro día?",
+        "slots": {
+          "greeted": true,
+          "service_type": "Manicura",
+          "client_name": "Laura",
+          "_intent": "info_query",
+          "_intent_confidence": 0.85,
+          "_intent_reason": "Palabra clave 'Manicura' sugiere consulta sobre servicio.",
+          "_validated_by_rag": true
+        }
+      },
+      {
+        "role": "user",
+        "content": "Viernes 2 de la tarde."
+      },
+      {
+        "role": "assistant",
+        "content": "¡Perfecto Laura! Te anoto para una manicura este viernes a la tarde. ¿A qué hora te parece bien?",
+        "slots": {
+          "greeted": true,
+          "service_type": "Manicura",
+          "client_name": "Laura",
+          "_intent": "execute_action",
+          "_intent_confidence": 0.9,
+          "_intent_reason": "Cliente indica día y hora con intención de agendar.",
+          "_attempts_count": 1,
+          "preferred_date": "2025-10-06"
+        }
+      },
+      {
+        "role": "user",
+        "content": "14:00."
+      },
+      {
+        "role": "assistant",
+        "content": "¡Genial Laura! Te anoto para la manicura a las 14:00 del próximo lunes. ¿Te mando una confirmación?",
+        "slots": {
+          "greeted": true,
+          "service_type": "Manicura",
+          "client_name": "Laura",
+          "_intent": "execute_action",
+          "_intent_confidence": 0.9,
+          "_intent_reason": "Cliente indica hora específica para agendar servicio.",
+          "_attempts_count": 2,
+          "preferred_date": "2025-10-06",
+          "preferred_time": "14:00"
+        }
+      },
+      {
+        "role": "user",
+        "content": "Sí."
+      },
+      {
+        "role": "assistant",
+        "content": "No pude completar la acción. ¿Querés que te derive con un humano?",
+        "slots": {
+          "greeted": true,
+          "service_type": "Manicura",
+          "client_name": "Laura",
+          "_intent": "execute_action",
+          "_intent_confidence": 0.9,
+          "_intent_reason": "Confirmación implícita de acción previa.",
+          "_attempts_count": 3,
+          "preferred_date": "2025-10-06",
+          "preferred_time": "14:00"
+        }
+      }
+    ]
+  },
+  {
+    "scenario_id": "gastronomia_efficient",
+    "scenario_name": "Cliente Eficiente - Restaurante",
+    "success": false,
+    "turns": 6,
+    "slots_collected": {
+      "greeted": true,
+      "categoria": "pedido",
+      "items": [],
+      "metodo_entrega": "retiro",
+      "_intent": "execute_action",
+      "_intent_confidence": 0.95,
+      "_intent_reason": "Cliente confirma reserva y solicita retiro.",
+      "_attempts_count": 3,
+      "_asked_human_once": true
+    },
+    "slots_expected": [
+      "party_size",
+      "preferred_date",
+      "preferred_time",
+      "client_name",
+      "client_phone"
+    ],
+    "slots_missing": [
+      "party_size",
+      "preferred_date",
+      "preferred_time",
+      "client_name",
+      "client_phone"
+    ],
+    "final_action": "ASK_HUMAN",
+    "error": null,
+    "duration_seconds": 17.02222320099827,
+    "conversation_log": [
+      {
+        "role": "user",
+        "content": "Hola, soy Roberto Sánchez, necesito Reserva de Mesa mañana a las 8 de la noche, mi email es roberto.sanchez@gmail.com"
+      },
+      {
+        "role": "assistant",
+        "content": "¡Hola Roberto! Me avisaste que necesitas una reserva de mesa para mañana a las 8pm. Perfecto, anoto tu email para el recordatorio: roberto.sanchez@gmail.com",
+        "slots": {
+          "greeted": true,
+          "categoria": "reserva de mesa",
+          "items": [],
+          "metodo_entrega": ""
+        }
+      },
+      {
+        "role": "user",
+        "content": "Mañana a las 8 de la noche necesito una mesa para cuatro personas. ¿Hay algún problema con eso?"
+      },
+      {
+        "role": "assistant",
+        "content": "Genial, reservaré una mesa para cuatro personas para mañana a las 8 de la noche. ¿Necesitas algo más?",
+        "slots": {
+          "greeted": true,
+          "categoria": "reserva de mesa",
+          "items": [],
+          "metodo_entrega": "",
+          "_intent": "execute_action",
+          "_intent_confidence": 0.95,
+          "_intent_reason": "Cliente necesita reservar mesa específica con fecha y hora.",
+          "_attempts_count": 1
+        }
+      },
+      {
+        "role": "user",
+        "content": "No, estoy listo para mañana a las 8 de la noche."
+      },
+      {
+        "role": "assistant",
+        "content": "Perfecto, anotado para mañana a las 8 de la noche. ¿Cuántas personas serán y qué van a pedir?",
+        "slots": {
+          "greeted": true,
+          "categoria": "reserva de mesa",
+          "items": [],
+          "metodo_entrega": "",
+          "_intent": "execute_action",
+          "_intent_confidence": 0.95,
+          "_intent_reason": "Cliente confirma reserva con fecha y hora específica.",
+          "_attempts_count": 1
+        }
+      },
+      {
+        "role": "user",
+        "content": "Soy Roberto Sánchez. Tengo una reserva para mañana a las 8 de la noche con cuatro personas. Nuestro email es roberto.sanchez@gmail.com y mi número de teléfono es +5491134567890."
+      },
+      {
+        "role": "assistant",
+        "content": "Perfecto Roberto, confirmé tu reserva para mañana a las 8pm con cuatro personas. ¿Podrías indicarme el tipo de reservación que prefieres? Es decir, si es delivery o retiro.",
+        "slots": {
+          "greeted": true,
+          "categoria": "reserva de mesa",
+          "items": [],
+          "metodo_entrega": "",
+          "_intent": "execute_action",
+          "_intent_confidence": 0.95,
+          "_intent_reason": "Cliente confirma reserva con fecha y hora específica.",
+          "_attempts_count": 2
+        }
+      },
+      {
+        "role": "user",
+        "content": "La reserva es para comida. Quiero retiro, por favor."
+      },
+      {
+        "role": "assistant",
+        "content": "¡Claro! Querés hacer un pedido para retiro. ¿Qué platillos te gustaría pedir hoy?",
+        "slots": {
+          "greeted": true,
+          "categoria": "pedido",
+          "items": [],
+          "metodo_entrega": "retiro",
+          "_intent": "execute_action",
+          "_intent_confidence": 0.95,
+          "_intent_reason": "Cliente confirma reserva y solicita retiro.",
+          "_attempts_count": 3
+        }
+      },
+      {
+        "role": "user",
+        "content": "Quiero pedir un pedido de pollo al carbon y una ensalada. ¿Y cómo se va a ir el retiro?"
+      },
+      {
+        "role": "assistant",
+        "content": "Te conecto con un agente humano en un momento.",
+        "slots": {
+          "greeted": true,
+          "categoria": "pedido",
+          "items": [],
+          "metodo_entrega": "retiro",
+          "_intent": "execute_action",
+          "_intent_confidence": 0.95,
+          "_intent_reason": "Cliente confirma reserva y solicita retiro.",
+          "_attempts_count": 3,
+          "_asked_human_once": true
+        }
+      }
+    ]
+  },
+  {
+    "scenario_id": "inmobiliaria_conversational",
+    "scenario_name": "Cliente Conversacional - Inmobiliaria",
+    "success": false,
+    "turns": 5,
+    "slots_collected": {
+      "greeted": true,
+      "operation": "alquiler",
+      "type": "departamento",
+      "zone": "Palermo",
+      "_intent": "info_query",
+      "_intent_confidence": 0.9,
+      "_intent_reason": "Pregunta sobre características del departamento antes de acción.",
+      "_attempts_count": 3,
+      "_asked_human_once": true
+    },
+    "slots_expected": [
+      "property_type",
+      "preferred_date",
+      "preferred_time",
+      "client_name",
+      "client_email"
+    ],
+    "slots_missing": [
+      "property_type",
+      "preferred_date",
+      "preferred_time",
+      "client_name",
+      "client_email"
+    ],
+    "final_action": "ASK_HUMAN",
+    "error": null,
+    "duration_seconds": 8.728627349002636,
+    "conversation_log": [
+      {
+        "role": "user",
+        "content": "Hola, quiero sacar un turno para ver un departamento en Palermo."
+      },
+      {
+        "role": "assistant",
+        "content": "¡Hola! Me avisás que queres programar una visita a un departamento en Palermo. ¿Podrías decirme cuándo te interesaría hacer la visita?",
+        "slots": {
+          "greeted": true,
+          "operation": "",
+          "type": "departamento",
+          "zone": "Palermo"
+        }
+      },
+      {
+        "role": "user",
+        "content": "Pasado mañana a las 5 PM. ¿Eso es posible?"
+      },
+      {
+        "role": "assistant",
+        "content": "¡Perfecto! Pasado mañana a las 5 PM. ¿Es para ver un departamento en alquiler o venta?",
+        "slots": {
+          "greeted": true,
+          "operation": "",
+          "type": "departamento",
+          "zone": "Palermo",
+          "_intent": "execute_action",
+          "_intent_confidence": 0.9,
+          "_intent_reason": "Consulta con fecha y hora específica para acción.",
+          "_attempts_count": 1
+        }
+      },
+      {
+        "role": "user",
+        "content": "Es para ver uno en alquiler."
+      },
+      {
+        "role": "assistant",
+        "content": "Perfecto, estás interesado en alquilar un departamento en Palermo. ¿Cuál es tu fecha preferida para la visita?",
+        "slots": {
+          "greeted": true,
+          "operation": "alquiler",
+          "type": "departamento",
+          "zone": "Palermo",
+          "_intent": "execute_action",
+          "_intent_confidence": 0.9,
+          "_intent_reason": "Consulta con tipo de propiedad y acción explícita.",
+          "_attempts_count": 2
+        }
+      },
+      {
+        "role": "user",
+        "content": "Pasado mañana. ¿Cuántas habitaciones tiene el departamento que quiero visitar?"
+      },
+      {
+        "role": "assistant",
+        "content": "No encontré información suficiente. ¿Podés darme un poco más de detalle?",
+        "slots": {
+          "greeted": true,
+          "operation": "alquiler",
+          "type": "departamento",
+          "zone": "Palermo",
+          "_intent": "info_query",
+          "_intent_confidence": 0.9,
+          "_intent_reason": "Pregunta sobre características del departamento antes de acción.",
+          "_attempts_count": 3
+        }
+      },
+      {
+        "role": "user",
+        "content": "Es para un departamento de 2 ambientes, en Palermo. Quería saber cuándo estaba disponible para verlo."
+      },
+      {
+        "role": "assistant",
+        "content": "Te conecto con un agente humano en un momento.",
+        "slots": {
+          "greeted": true,
+          "operation": "alquiler",
+          "type": "departamento",
+          "zone": "Palermo",
+          "_intent": "info_query",
+          "_intent_confidence": 0.9,
+          "_intent_reason": "Pregunta sobre características del departamento antes de acción.",
+          "_attempts_count": 3,
+          "_asked_human_once": true
+        }
+      }
+    ]
+  }
+]

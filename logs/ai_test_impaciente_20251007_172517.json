@@ -1,0 +1,53 @@
+{
+  "scenario": "impaciente",
+  "goal": "Necesito un turno YA para hoy, no importa el precio ni el profesional",
+  "turns": 5,
+  "max_turns": 5,
+  "duration_seconds": 11.279282,
+  "goal_achieved": false,
+  "goal_failed": false,
+  "failure_reason": null,
+  "conversation_log": [
+    {
+      "turn": 1,
+      "client": "\"hey, tengo que ir hoy, necesito un turno\"",
+      "assistant": "¡Hola! Claro, te ayudaré con eso. ¿Cuál es el servicio que necesitas y cuándo te gustaría venir hoy?",
+      "next_action": "GREET",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T17:25:07.874671"
+    },
+    {
+      "turn": 2,
+      "client": "\"no importa cual el servicio, solo me apura el turno para hoy\"",
+      "assistant": "¡Entendido! ¿Podrías decirme tu nombre y a qué hora te gustaría venir hoy?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T17:25:11.264489"
+    },
+    {
+      "turn": 3,
+      "client": "\"no tengo tiempo para eso, ¿quién está libre ahora mismo?\"",
+      "assistant": "¡Claro! Vamos a ver quién está disponible ahora mismo. ¿Podrías decirme qué tipo de servicio te gustaría realizar hoy?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T17:25:13.467613"
+    },
+    {
+      "turn": 4,
+      "client": "\"nada, me dale con quien esté libre, no me importa el precio ni nada\"",
+      "assistant": "¡Entendido! Querés que te reserve el turno con el profesional disponible hoy, sin importar el precio. ¿Podrías decirme qué servicio necesitás? Por ejemplo: corte de cabello, coloración, etc.",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T17:25:16.240132"
+    },
+    {
+      "turn": 5,
+      "client": "\"che, no me interesa nada de eso, solo dime que hora tengo turno y listo\"",
+      "assistant": "Te conecto con un agente humano en un momento.",
+      "next_action": "ASK_HUMAN",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T17:25:17.037802"
+    }
+  ],
+  "timestamp": "2025-10-07T17:25:06.259457"
+}

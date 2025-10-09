@@ -1,0 +1,93 @@
+{
+  "scenario": "quiero_agendar_turno",
+  "goal": "Quiero agendar un turno para cortarme el pelo mañana a las 10am con el profesional más económico",
+  "turns": 10,
+  "max_turns": 10,
+  "duration_seconds": 27.107867,
+  "goal_achieved": false,
+  "goal_failed": false,
+  "failure_reason": null,
+  "conversation_log": [
+    {
+      "turn": 1,
+      "client": "Hola, che necesito agendar un turno para mañana a las 10. Quería saber cuánto sale el corte, por favor.",
+      "assistant": "¡Hola! Perfecto, te anoto para mañana a las 10am. ¿Podrías darme tu nombre y email por favor?",
+      "next_action": "GREET",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:42:39.162723"
+    },
+    {
+      "turn": 2,
+      "client": "mi nombre es Lucas, no tengo mail necesito que me digan cuanto sale el corte",
+      "assistant": "¡Hola Lucas! No hay problema. ¿Qué hora te parece bien para tu corte de cabello?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:42:41.783098"
+    },
+    {
+      "turn": 3,
+      "client": "Che, mañana a las 10am me queda bien, pero cuánto sale exactamente el corte?",
+      "assistant": "¡Claro Lucas! Para un corte de cabello mañana a las 10am te puedo confirmar. Solo necesito tu email para enviarte la confirmación.",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:42:45.005408"
+    },
+    {
+      "turn": 4,
+      "client": "No tengo mail, che, ¿cuánto sale el corte exactamente?!",
+      "assistant": "¡Claro Lucas! Vamos a verificar los precios para un corte de cabello. ¿Podrías darme tu teléfono por favor? Y te aviso con el monto exacto.",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:42:48.269850"
+    },
+    {
+      "turn": 5,
+      "client": "Espera, che... no necesito que me llamen para contarle cuánto sale el corte. Necesito saber si es barato o no ahora mismo. ¿Cuál es el precio más económico para un corte de cabello en la peluquería?",
+      "assistant": "Te conecto con un agente humano en un momento.",
+      "next_action": "ASK_HUMAN",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:42:49.378867"
+    },
+    {
+      "turn": 6,
+      "client": "¡Che, no puedo esperar tanto! ¡Me da que me voy a otro lado si no es barato!",
+      "assistant": "Ya escalé tu caso. En breve te escribe un agente 🙌",
+      "next_action": "ASK_HUMAN",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:42:50.201197"
+    },
+    {
+      "turn": 7,
+      "client": "\"Espero que ese agente sea rapido, che! ¿Cuánto sale el corte para saber si me quedo o no?\"",
+      "assistant": "Ya escalé tu caso. En breve te escribe un agente 🙌",
+      "next_action": "ASK_HUMAN",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:42:51.082107"
+    },
+    {
+      "turn": 8,
+      "client": "No sé qué pasa acá, pero necesito saber el precio ya. ¿Cuánto sale el corte?",
+      "assistant": "Ya escalé tu caso. En breve te escribe un agente 🙌",
+      "next_action": "ASK_HUMAN",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:42:51.903493"
+    },
+    {
+      "turn": 9,
+      "client": "Che, no me hagas reír... ¿No saben quién soy yo que estoy esperando para que me digan el precio? Dámelo ya, por favor!",
+      "assistant": "Ya escalé tu caso. En breve te escribe un agente 🙌",
+      "next_action": "ASK_HUMAN",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:42:52.832037"
+    },
+    {
+      "turn": 10,
+      "client": "Che, no me hagas reír... ¿No saben quién soy yo que estoy esperando para que me digan el precio? Dámelo ya, por favor!",
+      "assistant": "Ya escalé tu caso. En breve te escribe un agente 🙌",
+      "next_action": "ASK_HUMAN",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:42:53.759547"
+    }
+  ],
+  "timestamp": "2025-10-07T15:42:27.152287"
+}

@@ -1,0 +1,53 @@
+{
+  "scenario": "impaciente",
+  "goal": "Necesito un turno YA para hoy, no importa el precio ni el profesional",
+  "turns": 5,
+  "max_turns": 5,
+  "duration_seconds": 14.163886,
+  "goal_achieved": false,
+  "goal_failed": false,
+  "failure_reason": null,
+  "conversation_log": [
+    {
+      "turn": 1,
+      "client": "\"Hola, tengo que hacerme un corte hoy che... ¿qué turno me quedan?\"",
+      "assistant": "¡Hola! Perfecto, te anoto para un corte de cabello hoy. ¿Me pasás tu nombre y email para confirmar?",
+      "next_action": "GREET",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T17:20:43.864092"
+    },
+    {
+      "turn": 2,
+      "client": "\"No importa el precio ni el profesional, lo que quiero es turno YA, no mañana ni después... ¿hay uno disponible?\"",
+      "assistant": "¡Entendido! Lo que más importa es conseguirte un turno ahora mismo. ¿Cuál es tu nombre y a qué hora te interesa venir hoy?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T17:20:48.229923"
+    },
+    {
+      "turn": 3,
+      "client": "\"Mi nombre no importa, che. Quiero turno YA para hoy, cualquier horita está bien... ¿hay uno disponible?\"",
+      "assistant": "¡Claro! Te quiero ayudar con tu turno para hoy. ¿Qué horario te conviene?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T17:20:51.016972"
+    },
+    {
+      "turn": 4,
+      "client": "\"¡Quiero venir YA, no importa el horario! Me paso por la peluquería en 10 minutos, ¿están disponibles?\"",
+      "assistant": "¡Hola! Perfecto, entiendo que te gustaría venir en los próximos diez minutos. ¿Podrías decirme tu nombre y email para confirmar?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T17:20:53.918054"
+    },
+    {
+      "turn": 5,
+      "client": "\"Che, no necesito dar ningun dato, solo quiero saber si hay un turno disponible ahora mismo... ¡No me importa que tenga que esperar! ¿O sí? ¿Están disponibles?\"",
+      "assistant": "Te conecto con un agente humano en un momento.",
+      "next_action": "ASK_HUMAN",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T17:20:54.883834"
+    }
+  ],
+  "timestamp": "2025-10-07T17:20:41.221068"
+}

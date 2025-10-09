@@ -1,0 +1,66 @@
+{
+  "scenario": "cliente_maria",
+  "goal": "Soy cliente habitual de María García y necesito un turno para la semana que viene",
+  "turns": 6,
+  "max_turns": 6,
+  "duration_seconds": 12.343281,
+  "goal_achieved": false,
+  "goal_failed": false,
+  "failure_reason": null,
+  "conversation_log": [
+    {
+      "turn": 1,
+      "client": "\"hola, necesito un turno para la semana que viene\"",
+      "assistant": "¡Hola! Perfecto, necesitas un turno para la semana que viene. ¿Me podés decir qué tipo de servicio te gustaría y tu nombre por favor?",
+      "next_action": "GREET",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:43:23.803391"
+    },
+    {
+      "turn": 2,
+      "client": "\"un corte de pelo y mi nombre es Sofía, me gusta venir a ver a María que siempre me hace una buena trabajo\"",
+      "assistant": "¡Hola Sofía! Perfecto, te anoto para un corte de pelo con María. ¿Cuándo te gustaría venir?",
+      "next_action": "ANSWER",
+      "tool_calls": [
+        {
+          "name": "get_business_hours",
+          "arguments": {}
+        }
+      ],
+      "timestamp": "2025-10-07T15:43:26.364081"
+    },
+    {
+      "turn": 3,
+      "client": "\"Mejor viernes por la tarde, ¿hay turnos libres?\"",
+      "assistant": "¡Perfecto! Viernes por la tarde suena bien. ¿Cuál es tu nombre y a qué hora te gustaría venir?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:43:28.377763"
+    },
+    {
+      "turn": 4,
+      "client": "\"Sofía, ¿qué onda que me volví a repetir el nombre? Me gustaría venir a las 16\"",
+      "assistant": "¡Hola! No te preocupes, a veces pasa. Te anoto para un corte de cabello viernes a las 16hs ¿Me pasás tu nombre y email por favor?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:43:30.713776"
+    },
+    {
+      "turn": 5,
+      "client": "\"Hola! Ya te dije mi nombre, soy Sofía. Y no tengo mail, me basta con confirmar el turno. Está todo listo, ¿no?\"",
+      "assistant": "¡Hola Sofía! Perfecto, ya tengo tu nombre y tu preferencia por la profesional María. Como no tienes mail, confirmaré tu turno directamente aquí. ¿A qué hora te gustaría venir?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:43:33.152218"
+    },
+    {
+      "turn": 6,
+      "client": "\"Me alegra que esté todo listo. ¡Genial! Pásame el precio total entonces, gracias\"",
+      "assistant": "Te conecto con un agente humano en un momento.",
+      "next_action": "ASK_HUMAN",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:43:33.985629"
+    }
+  ],
+  "timestamp": "2025-10-07T15:43:22.143222"
+}

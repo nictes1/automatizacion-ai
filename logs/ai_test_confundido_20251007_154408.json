@@ -1,0 +1,130 @@
+{
+  "scenario": "confundido",
+  "goal": "No sé bien qué quiero, pregunto cosas random y cambio de tema",
+  "turns": 12,
+  "max_turns": 12,
+  "duration_seconds": 32.031158,
+  "goal_achieved": false,
+  "goal_failed": false,
+  "failure_reason": null,
+  "conversation_log": [
+    {
+      "turn": 1,
+      "client": "\"Hola, che! Necesito hacer algo en la cabeza... un corte o algo más?\"",
+      "assistant": "¡Hola! ¿Cómo estás? Claro, te entiendo. Querés que busquemos algún servicio para tu cabeza, como un corte o algo más específico. ¿Me decís qué tenés en mente?",
+      "next_action": "GREET",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:43:38.880256"
+    },
+    {
+      "turn": 2,
+      "client": "\"eh... no sé, pensé hacer un cambio de color pero ahora me arrepintí porque me acuerdo que tenía un problema con el cabello después del otro cambio... ¿y si hago solo una limpieza?\"",
+      "assistant": "¡Claro! Una limpieza suena como una excelente opción para empezar. ¿Podrías decirme cuándo te gustaría hacerlo?",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T15:43:41.104346"
+    },
+    {
+      "turn": 3,
+      "client": "\"pero, che... o sea, no sé si hace falta cita para eso... ¿no puedo ir ahora mismo?\"",
+      "assistant": "Claro que sí, para asegurar tu turno es mejor agendar antes sobre todo si querés uno específico. Pero chequeo la disponibilidad actual para ver si hay algo libre ahora mismo 🤔",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T15:43:43.744592"
+    },
+    {
+      "turn": 4,
+      "client": "\"ok... bueno mirá, ¿podrías hacer una cita para mañana a las 10? Sí o no?\"",
+      "assistant": "¡Claro! Mañana a las 10:00 para una limpieza de cabello. ¿Me das tu nombre, por favor?",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T15:43:45.963027"
+    },
+    {
+      "turn": 5,
+      "client": "\"esperá... no sé si quiero el mismo estilo que tené en mi último corte... o sea, me gusta pero no sé si queda bien con la cara ahora\"",
+      "assistant": "¡Entiendo! No te preocupes, podemos revisar estilos. ¿Me pasás tu nombre y email para confirmar todo?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:43:48.242175"
+    },
+    {
+      "turn": 6,
+      "client": "\"noooo... no sé por qué pero el estilo que elegí en mi último corte ahora no me queda bien, che... creo que prefiero un recambio de color\"",
+      "assistant": "Claro, entiendo perfectamente. Te propongo un recambio de color entonces. ¿Cuál es tu nombre por favor?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:43:50.467276"
+    },
+    {
+      "turn": 7,
+      "client": "\"mira, espera... no sé si me guste el color que elegí, o sea, la última vez me puse un rubio intenso pero ahora siento que está pasado y quiero algo más natural. ¿Sabés qué corte sale bien con este tipo de peluquería?\"",
+      "assistant": "¡Claro, entiendo tu preocupación! Si estás buscando algo más natural después de un rubio intenso, quizás podrías probar con un tono ceniza o miel. En cuanto al corte, uno tipo Bob o Asimétrico quedarían geniales para ese estilo más suave. ¿Cuál es tu nombre y a qué hora te gus...",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:43:54.985562"
+    },
+    {
+      "turn": 8,
+      "client": "\"mañana no me queda bien... o sea, el turno que elegí de mañana, ahora sí quiero uno tipo Bob... ¿qué pasa si llego tarde?\"",
+      "assistant": "¡Claro! Entiendo que te interesa un turno con Bob. ¿Podrías decirme tu nombre por favor? Así puedo verificar la disponibilidad para ti.",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:43:58.927465"
+    },
+    {
+      "turn": 9,
+      "client": "\"no... no sé, me estoy confundiendo todo... ¿podés darme una lista de estilos y cuánto sale cada uno?\"",
+      "assistant": "¡Claro! Entiendo que estás dudando. Podemos revisar los servicios disponibles y sus precios. ¿Me das tu nombre por favor?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:44:02.425462"
+    },
+    {
+      "turn": 10,
+      "client": "\"Es que no sé... mi nombre es Juan pero no sé si quiero un Bob o el otro estilo, y ahora me pregunté si la sesión de masajes que hay en la peluquería también sale barato...\"",
+      "assistant": "¡Hola Juan! Entiendo que estás dudando entre diferentes servicios y te preguntas por los precios. No te preocupes, puedo ayudarte a elegir el mejor servicio para ti. Para empezar, ¿me das tu email y confirmamos el corte de cabello y la sesión de masajes en otro momento?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:44:06.265350"
+    },
+    {
+      "turn": 11,
+      "client": "\"Es que no quiero enviar mi mail... o sea, si es un problema puedo ir mañana a ver... ¿y si voy después de las 10? osea, antes de las 7 pm?\"",
+      "assistant": "Te conecto con un agente humano en un momento.",
+      "next_action": "ASK_HUMAN",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:44:07.257008"
+    },
+    {
+      "turn": 12,
+      "client": "\"ok, pero ¿cuál es el problema si no envío mi mail?\"",
+      "assistant": "Ya escalé tu caso. En breve te escribe un agente 🙌",
+      "next_action": "ASK_HUMAN",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:44:08.035919"
+    }
+  ],
+  "timestamp": "2025-10-07T15:43:36.505087"
+}

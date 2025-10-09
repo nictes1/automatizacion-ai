@@ -1,0 +1,72 @@
+# Configuración para sistema multi-modelo con vLLM
+# Arquitectura: Router (8B) + Agente (14B)
+
+# Router - Modelo ligero para intent classification y respuestas simples
+router:
+  model: "meta-llama/Llama-3.1-8B-Instruct"
+  quantization: "awq"  # 4-bit quantization
+  port: 8001
+  gpu_memory_utilization: 0.35  # ~7-8GB VRAM
+  max_model_len: 4096
+  tensor_parallel_size: 1
+  
+  # Casos de uso del router:
+  # - Intent classification (GREET, ANSWER, EXECUTE_ACTION, etc.)
+  # - Respuestas simples (precios, horarios, smalltalk)
+  # - Detección inicial de slots
+  # Latencia objetivo: 50-100ms
+
+# Agente - Modelo principal para tool calling y slot filling
+agent:
+  model: "Qwen/Qwen2.5-14B-Instruct-AWQ"
+  quantization: "awq"  # 4-bit quantization
+  port: 8002
+  gpu_memory_utilization: 0.50  # ~10-12GB VRAM
+  max_model_len: 8192
+  tensor_parallel_size: 1
+  enable_prefix_caching: true
+  
+  # Casos de uso del agente:
+  # - Tool calling (book_slot, crear_pedido, etc.)
+  # - Slot filling conversacional
+  # - Generación de respuestas estructuradas (JSON)
+  # Latencia objetivo: 200-400ms
+
+# Hardware requirements
+hardware:
+  gpu: "NVIDIA RTX 3090"
+  vram: "24GB"
+  ram: "64GB"
+  expected_vram_usage:
+    router: "7-8GB"
+    agent: "10-12GB"
+    total: "18-20GB"
+    buffer: "4-6GB"
+
+# Routing strategy
+routing:
+  # Intents que van directo al router (rápido)
+  router_only_intents:
+    - "GREET"
+    - "ANSWER"
+    - "SMALLTALK"
+    - "QUERY_INFO"
+    - "QUERY_PRICES"
+    - "QUERY_SCHEDULE"
+  
+  # Intents que requieren el agente (preciso)
+  agent_required_intents:
+    - "EXECUTE_ACTION"
+    - "BOOK_APPOINTMENT"
+    - "CREATE_ORDER"
+    - "FILL_SLOTS"
+  
+  # Threshold para escalar a agente si router no está seguro
+  confidence_threshold: 0.85
+
+# Performance monitoring
+monitoring:
+  enable_metrics: true
+  log_latencies: true
+  prometheus_port: 9090
+

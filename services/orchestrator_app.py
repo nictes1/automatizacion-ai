@@ -50,6 +50,16 @@ class DecideResponse(BaseModel):
     objective: str = ""
     end: bool = False
 
+class PersistMessageRequest(BaseModel):
+    workspace_id: str
+    conversation_id: str
+    message_text: str
+    metadata: Dict[str, Any] = {}
+
+class PersistMessageResponse(BaseModel):
+    message_id: str
+    success: bool
+
 # Health check
 @app.get("/health")
 async def health():
@@ -120,6 +130,60 @@ async def decide(
         logger.error(f"Error en decide: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/orchestrator/persist_message", response_model=PersistMessageResponse)
+async def persist_message(
+    request: PersistMessageRequest,
+    x_workspace_id: Optional[str] = Header(None)
+):
+    """
+    Persiste un mensaje del asistente en la base de datos usando la función SQL persist_outbound
+    """
+    try:
+        import psycopg2
+        from psycopg2.extras import RealDictCursor
+        import os
+        import json
+
+        # Usar workspace_id del header o del request body
+        workspace_id = x_workspace_id or request.workspace_id
+
+        # Conectar a la base de datos
+        conn = psycopg2.connect(os.getenv("DATABASE_URL", "postgresql://pulpo:pulpo@postgres:5432/pulpo"))
+
+        try:
+            with conn.cursor() as cur:
+                # Llamar a la función SQL persist_outbound
+                cur.execute("""
+                    SELECT pulpo.persist_outbound(
+                        %s::uuid,
+                        %s::uuid,
+                        %s,
+                        'text',
+                        'assistant',
+                        %s::jsonb
+                    ) AS message_id
+                """, (
+                    workspace_id,
+                    request.conversation_id,
+                    request.message_text,
+                    json.dumps(request.metadata)
+                ))
+
+                result = cur.fetchone()
+                message_id = str(result[0])
+                conn.commit()
+
+                return PersistMessageResponse(
+                    message_id=message_id,
+                    success=True
+                )
+        finally:
+            conn.close()
+
+    except Exception as e:
+        logger.error(f"Error persistiendo mensaje: {e}")
+        raise HTTPException(status_code=500, detail=f"Error persistiendo mensaje: {str(e)}")
+
 # Startup/shutdown
 @app.on_event("startup")
 async def startup():
@@ -129,6 +193,9 @@ async def startup():
 async def shutdown():
     logger.info("Orchestrator Service shutting down...")
     await orchestrator_service.close()
+    # Close MCP client
+    from services.mcp_client import close_mcp_client
+    await close_mcp_client()
 
 if __name__ == "__main__":
     import uvicorn

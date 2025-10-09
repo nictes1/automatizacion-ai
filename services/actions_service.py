@@ -163,8 +163,11 @@ class BookSlotPayload(BaseModel):
     conversation_id: str
     workspace_id: str
     service_type: str
-    preferred_date: datetime = Field(..., description="Fecha preferida (ISO)")
-    contact_info: Dict[str, Any] = Field(..., description="Información de contacto")
+    preferred_date: str = Field(..., description="Fecha preferida (YYYY-MM-DD)")
+    preferred_time: str = Field(..., description="Hora preferida (HH:MM)")
+    client_name: str = Field(..., description="Nombre del cliente")
+    client_email: Optional[str] = Field(None, description="Email del cliente")
+    client_phone: Optional[str] = Field(None, description="Teléfono del cliente")
 
 # Modelos Pydantic
 class ExecuteActionRequest(BaseModel):
@@ -350,13 +353,13 @@ class GastronomiaActions:
                     # Buscar por SKU primero, luego por nombre
                     if item.sku:
                         cur.execute("""
-                            SELECT nombre, precio FROM pulpo.menu_items 
-                            WHERE workspace_id = %s AND sku = %s AND disponible = true
+                            SELECT name as nombre, price as precio FROM pulpo.menu_items
+                            WHERE workspace_id = %s AND sku = %s AND is_active = true
                         """, (workspace_id, item.sku))
                     else:
                         cur.execute("""
-                            SELECT nombre, precio FROM pulpo.menu_items 
-                            WHERE workspace_id = %s AND LOWER(nombre) = LOWER(%s) AND disponible = true 
+                            SELECT name as nombre, price as precio FROM pulpo.menu_items
+                            WHERE workspace_id = %s AND LOWER(name) = LOWER(%s) AND is_active = true
                             LIMIT 1
                         """, (workspace_id, item.nombre))
                     
@@ -392,7 +395,7 @@ class GastronomiaActions:
             with get_cursor(workspace_id=data.workspace_id) as (conn, cur):
                 cur.execute("""
                     INSERT INTO pulpo.pedidos (
-                        workspace_id, conversation_id, items_json,
+                        workspace_id, conversation_id, items,
                         metodo_entrega, direccion, total, status, created_at
                     ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
@@ -465,8 +468,8 @@ class InmobiliariaActions:
         def _fn():
             with get_cursor(dict_cursor=True, workspace_id=workspace_id) as (conn, cur):
                 cur.execute("""
-                    SELECT id, titulo FROM pulpo.properties 
-                    WHERE workspace_id = %s AND property_id = %s AND disponible = true
+                    SELECT id, description as titulo FROM pulpo.properties
+                    WHERE workspace_id = %s AND property_id = %s AND is_available = true
                 """, (workspace_id, property_id))
                 row = cur.fetchone()
                 if not row:
@@ -506,12 +509,13 @@ class ServiciosActions:
         try:
             # Validar payload con Pydantic
             data = BookSlotPayload(**payload)
-            
-            # Verificar que el servicio existe
-            await self._validate_service(data.service_type, data.workspace_id)
-            
+
+            # Verificar que el servicio existe y obtener su ID
+            service = await self._validate_service(data.service_type, data.workspace_id)
+            service_type_id = service['id']
+
             # Crear reserva en base de datos
-            reserva_id = await self._persistir_reserva(data)
+            reserva_id = await self._persistir_reserva(data, service_type_id)
             
             
             return ActionResult(
@@ -522,7 +526,10 @@ class ServiciosActions:
                     "reserva_id": reserva_id,
                     "service_type": data.service_type,
                     "preferred_date": data.preferred_date,
-                    "contact_info": data.contact_info,
+                    "preferred_time": data.preferred_time,
+                    "client_name": data.client_name,
+                    "client_email": data.client_email,
+                    "client_phone": data.client_phone,
                     "status": "confirmed"
                 },
                 created_at=datetime.now(timezone.utc),
@@ -544,12 +551,13 @@ class ServiciosActions:
             )
     
     async def _validate_service(self, service_type: str, workspace_id: str):
-        """Valida que el servicio existe y está disponible"""
+        """Valida que el servicio existe y está disponible - busca por nombre (case-insensitive)"""
         def _fn():
             with get_cursor(dict_cursor=True, workspace_id=workspace_id) as (conn, cur):
                 cur.execute("""
-                    SELECT id, nombre FROM pulpo.services_catalog 
-                    WHERE workspace_id = %s AND service_type = %s AND disponible = true
+                    SELECT id, name as nombre FROM pulpo.service_types
+                    WHERE workspace_id = %s AND LOWER(name) = LOWER(%s) AND is_active = true
+                    LIMIT 1
                 """, (workspace_id, service_type))
                 row = cur.fetchone()
                 if not row:
@@ -557,26 +565,38 @@ class ServiciosActions:
                 return row
         return await db_exec(_fn)
     
-    async def _persistir_reserva(self, data: BookSlotPayload) -> str:
-        """Persiste la reserva en base de datos"""
+    async def _persistir_reserva(self, data: BookSlotPayload, service_type_id: str) -> str:
+        """Persiste la reserva en base de datos usando el schema normalizado"""
         def _fn():
             with get_cursor(workspace_id=data.workspace_id) as (conn, cur):
+                # Combinar fecha y hora en un datetime para scheduled_at
+                try:
+                    from datetime import datetime as dt
+                    scheduled_at = dt.fromisoformat(f"{data.preferred_date}T{data.preferred_time}:00")
+                except ValueError:
+                    # Fallback si el formato no es correcto
+                    scheduled_at = dt.fromisoformat(data.preferred_date)
+
+                # Insertar usando el schema normalizado
                 cur.execute("""
                     INSERT INTO pulpo.reservas (
-                        workspace_id, conversation_id, service_type,
-                        preferred_date, contact_info, status, created_at
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        workspace_id, conversation_id, service_type_id,
+                        scheduled_at, client_name, client_email, client_phone,
+                        status, created_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                 """, (
                     data.workspace_id,
                     data.conversation_id,
-                    data.service_type,
-                    data.preferred_date,
-                    json.dumps(data.contact_info),
+                    service_type_id,
+                    scheduled_at,
+                    data.client_name,
+                    data.client_email,
+                    data.client_phone,
                     "confirmed",
                     datetime.now(timezone.utc)
                 ))
-                
+
                 reserva_id = cur.fetchone()[0]
                 return str(reserva_id)
         return await db_exec(_fn)
@@ -594,7 +614,8 @@ class ActionsService:
         self.action_handlers = {
             "crear_pedido": self.gastronomia_actions.crear_pedido,
             "schedule_visit": self.inmobiliaria_actions.schedule_visit,
-            "book_slot": self.servicios_actions.book_slot
+            "book_slot": self.servicios_actions.book_slot,
+            "schedule_appointment": self.servicios_actions.book_slot  # Alias para vertical servicios
         }
     
     async def execute_action(self, request: ExecuteActionRequest, workspace_id: str, request_id: str = None) -> ExecuteActionResponse:
@@ -764,7 +785,7 @@ class ActionsService:
             def _fn():
                 with get_cursor(workspace_id=workspace_id) as (conn, cur):
                     cur.execute("""
-                        INSERT INTO pulpo.event_outbox (workspace_id, event_type, payload)
+                        INSERT INTO pulpo.outbox_events (workspace_id, event_type, payload)
                         VALUES (%s, %s, %s)
                     """, (workspace_id, event_type, json.dumps(outbox_payload)))
             
@@ -881,7 +902,8 @@ async def get_available_actions():
                 "name": "book_slot",
                 "description": "Reservar turno de servicio",
                 "vertical": "servicios",
-                "required_fields": ["service_type", "preferred_date", "contact_info"]
+                "required_fields": ["service_type", "preferred_date", "preferred_time", "client_name"],
+                "optional_fields": ["client_email", "client_phone"]
             },
             {
                 "name": "cancel_booking",

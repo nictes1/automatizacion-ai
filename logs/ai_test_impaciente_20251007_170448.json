@@ -1,0 +1,53 @@
+{
+  "scenario": "impaciente",
+  "goal": "Necesito un turno YA para hoy, no importa el precio ni el profesional",
+  "turns": 5,
+  "max_turns": 5,
+  "duration_seconds": 10.827076,
+  "goal_achieved": false,
+  "goal_failed": false,
+  "failure_reason": null,
+  "conversation_log": [
+    {
+      "turn": 1,
+      "client": "Hola che, necesito un turno YA para hoy",
+      "assistant": "¡Hola! Perfecto, veo que necesitas un turno para hoy mismo. ¿Cuál es el servicio que te gustaría realizar y a qué hora? También necesito tu nombre y email por favor.",
+      "next_action": "GREET",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T17:04:39.105635"
+    },
+    {
+      "turn": 2,
+      "client": "no me importa el precio ni quien venga, solo ponme turno",
+      "assistant": "¡Claro! ¿Qué tipo de servicio necesitas hoy? Quiero asegurarme de ayudarte con lo que necesites.",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T17:04:42.387079"
+    },
+    {
+      "turn": 3,
+      "client": "\"Un corte de pelo, cualquier cosa me vale che\"",
+      "assistant": "¡Claro! Te anoto para un corte de pelo. ¿Me puedes pasar tu nombre y email, por favor?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T17:04:44.400806"
+    },
+    {
+      "turn": 4,
+      "client": "\"mejor no, solo quiero saber cuándo puedo ir ahorita mismo\"",
+      "assistant": "Claro, entiendo. ¿Cuándo te gustaría venir hoy para un corte de cabello?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T17:04:46.899995"
+    },
+    {
+      "turn": 5,
+      "client": "\"¡Ahora mismo! ¿Hay turno?\"",
+      "assistant": "Te conecto con un agente humano en un momento.",
+      "next_action": "ASK_HUMAN",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T17:04:47.602879"
+    }
+  ],
+  "timestamp": "2025-10-07T17:04:37.276670"
+}

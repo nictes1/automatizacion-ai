@@ -1,0 +1,61 @@
+{
+  "scenario": "cliente_maria",
+  "goal": "Soy cliente habitual de María García y necesito un turno para la semana que viene",
+  "turns": 6,
+  "max_turns": 6,
+  "duration_seconds": 10.629769,
+  "goal_achieved": false,
+  "goal_failed": false,
+  "failure_reason": null,
+  "conversation_log": [
+    {
+      "turn": 1,
+      "client": "\"Hola che, necesito agendar un turno para la semana que viene\"",
+      "assistant": "¡Hola! Perfecto, te anoto para la semana que viene. ¿Podrías decirme cuál es el servicio que necesitas y tu nombre por favor?",
+      "next_action": "GREET",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:49:23.106210"
+    },
+    {
+      "turn": 2,
+      "client": "\"un corte de pelo está bien, soy Gustavo\"",
+      "assistant": "¡Hola Gustavo! Perfecto, ya tenemos un corte de pelo para ti. ¿Me decís a qué hora te gustaría venir la próxima semana?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:49:25.223336"
+    },
+    {
+      "turn": 3,
+      "client": "\"mejor el miércoles por la mañana a las 9\"",
+      "assistant": "¡Perfecto Gustavo! Te anoto para miércoles a las 9am para tu corte de cabello. ¿Me pasás tu email por favor?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:49:27.538168"
+    },
+    {
+      "turn": 4,
+      "client": "\"No che, no tengo mail\"",
+      "assistant": "Entendido Gustavo. Como preferís no tener mail, te confirmaré tu turno por WhatsApp. ¿Cuál es tu número de teléfono para mayor seguridad?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:49:29.967446"
+    },
+    {
+      "turn": 5,
+      "client": "\"Mi número es 1153234567, che gracias!\"",
+      "assistant": "Te conecto con un agente humano en un momento.",
+      "next_action": "ASK_HUMAN",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:49:30.701944"
+    },
+    {
+      "turn": 6,
+      "client": "\"Che Gustavo, no hay problema si tienen que hablar con alguien. Solo me quería aclarar el turno para miércoles, ¿está todo arreglado?\"",
+      "assistant": "Ya escalé tu caso. En breve te escribe un agente 🙌",
+      "next_action": "ASK_HUMAN",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:49:31.633733"
+    }
+  ],
+  "timestamp": "2025-10-07T15:49:21.504675"
+}

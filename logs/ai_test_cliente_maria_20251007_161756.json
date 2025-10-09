@@ -1,0 +1,89 @@
+{
+  "scenario": "cliente_maria",
+  "goal": "Soy cliente habitual de María García y necesito un turno para la semana que viene",
+  "turns": 6,
+  "max_turns": 6,
+  "duration_seconds": 16.558257,
+  "goal_achieved": false,
+  "goal_failed": false,
+  "failure_reason": null,
+  "conversation_log": [
+    {
+      "turn": 1,
+      "client": "Hola che, necesito un turno para la semana que viene, ¿qué dia quedan disponibles?",
+      "assistant": "¡Hola! ¿Cómo estás? Me diste una idea de lo que necesitas, un turno la semana que viene para un servicio de peluquería. Podrías especificar qué tipo de servicio te gustaría y en qué día específicamente te interesaría hacerlo?",
+      "next_action": "GREET",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T16:17:42.042173"
+    },
+    {
+      "turn": 2,
+      "client": "un corte de pelo corto che, ¿qué día quedan disponibles para la semana que viene?",
+      "assistant": "Perfecto, te anoto para un corte de cabello corto la semana que viene. Déjame ver qué días quedan disponibles para ti.",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T16:17:44.645069"
+    },
+    {
+      "turn": 3,
+      "client": "Me gustaría hacerlo mañana o martes, ¿quedan disponibilidad en alguno de esos días?",
+      "assistant": "¡Claro! Vamos a verificar la disponibilidad para mañana o el martes. Un momento por favor.",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T16:17:47.482354"
+    },
+    {
+      "turn": 4,
+      "client": "¿Y si no quedaba mañana, qué día me recomendás?",
+      "assistant": "Claro, déjame verificar la disponibilidad para los próximos días. Estoy mirando que tenemos plazas disponibles para el miércoles a partir de las 15:00hs. ¿Te interesa alguno de esos horarios?",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T16:17:50.270538"
+    },
+    {
+      "turn": 5,
+      "client": "¡Genial! El miércoles a las 15hs me queda bien, perfecto. Así quedamos en lo del corte de pelo corto para el día siguiente de mañana. Gracias por la ayuda, María.",
+      "assistant": "¡Perfecto María! Te anoto para el miércoles a las 15hs para un corte de cabello. ¿Cuál es tu nombre completo por favor? Y me pasás tu email para confirmarte el turno.",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T16:17:53.302043"
+    },
+    {
+      "turn": 6,
+      "client": "Mi nombre completo es Sofía Gómez y mi mail es sofia.gomez@hotmail.com ¡Gracias!",
+      "assistant": "¡Hola Sofía! Genial, confirmo tu turno para un corte de cabello. ¿Estás disponible mañana a las 15:00?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T16:17:55.639109"
+    }
+  ],
+  "timestamp": "2025-10-07T16:17:39.581570"
+}

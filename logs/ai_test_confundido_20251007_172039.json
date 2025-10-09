@@ -1,0 +1,186 @@
+{
+  "scenario": "confundido",
+  "goal": "No sé bien qué quiero, pregunto cosas random y cambio de tema",
+  "turns": 12,
+  "max_turns": 12,
+  "duration_seconds": 39.312235,
+  "goal_achieved": false,
+  "goal_failed": false,
+  "failure_reason": null,
+  "conversation_log": [
+    {
+      "turn": 1,
+      "client": "Hola che, estoy pensando en ir a tu peluquería mañana, pero no sé bien qué quiero... un corte o una perika... ¿cómo está eso en cuanto al precio?",
+      "assistant": "¡Hola! Perfecto, veo que estás interesado en un corte o una peluquería integral para mañana. ¿Podrías decirme tu nombre y email para ayudarte mejor? También te puedo informar sobre los precios una vez tengamos claro qué servicio elegís.",
+      "next_action": "GREET",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T17:20:02.807438"
+    },
+    {
+      "turn": 2,
+      "client": "\"no sé, yo pensaba en un corte pero mi novia me dijo que la peluquería de al lado hace las mejores perikas... ¿cómo se llama el dueño de acá?\"",
+      "assistant": "¡Ah, entiendo! Acá trabajamos Carlos, Juan y María que son nuestros peluqueros especialistas. Si te gustan las perikas, nuestro dueño es Carlos Ramírez, él tiene un estilo muy particular y detallista. ¿Querés que te reserve con él?",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:20:07.137353"
+    },
+    {
+      "turn": 3,
+      "client": "\"pero la perika del otro lado es famosa por ser la mejor de la zona... ¿cómo sé si el de acá hace igual?\"",
+      "assistant": "Claro, entendí que buscas saber sobre la calidad del corte aquí. Nuestros profesionales tienen distintos precios y especialidades: Carlos hace un excelente corte a $3500, Juan tiene mucha experiencia por $4500 y María se destaca en cortes personalizados a $6000. ¿Te interesa a...",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:20:10.491494"
+    },
+    {
+      "turn": 4,
+      "client": "\"Esperá, esperá, me confundí, yo no quiero saber por el precio... ¿cómo es que los peluqueros pueden hacer tantas cosas si están sentados todos en la misma silla?\"",
+      "assistant": "¡Claro! En nuestra peluquería, cada profesional puede realizar varios servicios sentados en la misma silla. Tenemos corte con Carlos a $3500, Juan a $4500 y María a $6000. ¿Te interesa alguno de estos servicios o necesitás ayuda para algo más?",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:20:13.636456"
+    },
+    {
+      "turn": 5,
+      "client": "\"Es que no me parece normal, che... si están en la misma silla. Quiero saber cómo se hace un corte con 'personalizado' a $6000, porque eso es demasiado dinero por el pelo...\"",
+      "assistant": "Entiendo tu curiosidad, la opción más cara del corte personalizado es con María García a $6000 por su tiempo adicional de 45 minutos y el servicio premium que ofrece. ¿Te gustaría saber más sobre qué incluye este servicio o ver otras opciones?",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:20:16.763476"
+    },
+    {
+      "turn": 6,
+      "client": "\"Esperá, espera... no sé si la opción premium vale lo que cuesta. Me parece una buena cantidad por el pelo, pero igual me gusta la perika de enfrente, ¿cómo es posible que sea la mejor?\"",
+      "assistant": "Entiendo tus dudas sobre el costo del corte premium, te puedo confirmar que Carlos ofrece un corte a $3500, Juan a $4500 y María a $6000. El precio refleja la experiencia de cada profesional y los servicios adicionales que ofrecen.",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:20:19.999308"
+    },
+    {
+      "turn": 7,
+      "client": "\"Eh, no me estoy poniendo en serio, che... No sé qué hacer. Quiero saber si puedo irme a una peluquería de enfrente donde hay un tipo con bigote que me hizo un corte bien hace tiempo, pero mi mujer dice que no queda bien...\"",
+      "assistant": "Entiendo que estás dudando entre quedarte con nosotros o ir a la peluquería de enfrente. Acá tenés opciones para un corte profesional: Carlos hace el corte por $3500, Juan lo hace por $4500 y María te atiende por $6000. ¿Querés que te reserve un turno con alguno de ellos?",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:20:23.587262"
+    },
+    {
+      "turn": 8,
+      "client": "\"Che... no sé si me quedo acá o voy a la peluquería de enfrente, pero pensé en hacer algo más radical, ¿saben si tienen algún corte \"minimalista\"? No entiendo nada, yo solo quiero que mi mujer se calle...\"",
+      "assistant": "Claro, entiendo que estás pensando en algo más radical pero no te preocupes, nosotros tenemos opciones de corte minimalista. Tenemos el servicio de Corte de Cabello ofrecido por Carlos a $3500, Juan a $4500 y María a $6000. ¿Te interesa alguno de estos cortes o necesitás algo ...",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:20:27.012079"
+    },
+    {
+      "turn": 9,
+      "client": "\"Mirá, che... creo que voy a ir para otro lado. La verdad es que no sé qué quiero ni de qué está el corte minimalista. Mi mujer va a estar más tranquila si me voy para la peluquería de enfrente y ella se queda con su bigote malo...\"",
+      "assistant": "Entiendo, no te preocupes. Si cambias de opinión o necesitas algo más, estamos acá para ayudarte. Espero que encuentres lo que buscas en otra peluquería.",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:20:29.748532"
+    },
+    {
+      "turn": 10,
+      "client": "\"Lo siento che... no sé qué decirte. Me voy para la otra peluquería de enfrente y me hago el corte del tipo con bigote, mirá...\"",
+      "assistant": "No te preocupes, entiendo que estás buscando lo mejor para tus necesidades. Tenemos cortes profesionales a precios desde $3500 con Carlos hasta $6000 con María. ¿Querés saber más sobre estos servicios o alguno en particular?",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:20:32.935179"
+    },
+    {
+      "turn": 11,
+      "client": "\"Mirá... no sé, no entiendo nada. ¿Y si le pregunto al tipo de enfrente qué me recomienda?\"",
+      "assistant": "¡Claro! Podemos pedirle a alguno de los profesionales que te recomienden el mejor servicio. Tenemos corte con Carlos a $3500, Juan a $4500 y María a $6000. ¿Con cuál preferís hablar?",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:20:35.953109"
+    },
+    {
+      "turn": 12,
+      "client": "\"Esperá un momento... o sea, si el tipo de enfrente se lo pregunta y él me dice que haga esto o lo otro, no sé si está bien...\"",
+      "assistant": "Entiendo, no te preocupes. Si tenés alguna duda específica sobre el servicio o los precios de cada profesional, podés preguntarme sin problema. ¿Querés saber algo en particular?",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:20:38.700674"
+    }
+  ],
+  "timestamp": "2025-10-07T17:19:59.889327"
+}

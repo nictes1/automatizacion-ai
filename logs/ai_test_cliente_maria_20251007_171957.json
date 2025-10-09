@@ -1,0 +1,45 @@
+{
+  "scenario": "cliente_maria",
+  "goal": "Soy cliente habitual de María García y necesito un turno para la semana que viene",
+  "turns": 5,
+  "max_turns": 6,
+  "duration_seconds": 11.365624,
+  "goal_achieved": true,
+  "goal_failed": false,
+  "failure_reason": null,
+  "conversation_log": [
+    {
+      "turn": 1,
+      "client": "\"che, ¿qué onda? Necesito hacerme el corte a la semana que viene\"",
+      "assistant": "¡Hola! Perfecto, te anoto para el corte de cabello la semana que viene. ¿Me pasás tu nombre y email para confirmar?",
+      "next_action": "GREET",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T17:19:48.892285"
+    },
+    {
+      "turn": 2,
+      "client": "\"María, che, no es por email que necesito el turno, pero ok\"",
+      "assistant": "¡Hola María! Entendido, no hay problema con el email. ¿Cuándo te gustaría tu corte de cabello?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T17:19:52.286710"
+    },
+    {
+      "turn": 3,
+      "client": "\"mañana a las 10 me viene bien, gracias\"",
+      "assistant": "¡Perfecto María! Te anoto para mañana a las 10. ¿Me pasás tu email por favor?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T17:19:54.332821"
+    },
+    {
+      "turn": 4,
+      "client": "\"dios, no es para el email che... solo quería hacerme el corte\"",
+      "assistant": "¡Claro María! No te preocupes, solo necesito tu email para confirmar el turno. ¿Podrías pasarme ese dato por favor?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T17:19:56.967756"
+    }
+  ],
+  "timestamp": "2025-10-07T17:19:46.504801"
+}

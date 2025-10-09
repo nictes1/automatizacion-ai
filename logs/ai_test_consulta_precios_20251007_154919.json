@@ -1,0 +1,124 @@
+{
+  "scenario": "consulta_precios",
+  "goal": "Quiero saber los precios de todos los servicios y quiénes son los profesionales antes de decidir",
+  "turns": 8,
+  "max_turns": 8,
+  "duration_seconds": 22.37997,
+  "goal_achieved": false,
+  "goal_failed": false,
+  "failure_reason": null,
+  "conversation_log": [
+    {
+      "turn": 1,
+      "client": "\"Hola che! Quería saber precios y quién me puede atender a mi llegada. ¿Podés decirme algo?\"",
+      "assistant": "¡Hola! Perfecto, ¡estoy para ayudarte! Querías saber sobre precios y quién te puede atender. ¿Me das tu nombre y email por favor?",
+      "next_action": "GREET",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:48:59.356025"
+    },
+    {
+      "turn": 2,
+      "client": "\"Che, no tengo correo electrónico, solo quería saber los precios de todo: corte, peinado, depilación... y cómo se llama el tipo que me va a hacer la peluquería. ¿No tenés un WhatsApp oficial?\"",
+      "assistant": "Claro que sí, te puedo ayudar. Vamos a ver los precios de todos los servicios disponibles para ti.",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T15:49:02.244813"
+    },
+    {
+      "turn": 3,
+      "client": "\"Genial! Quiero saber si el corte de pelo es más barato que un peinado o no. Y ¿cómo se llama el tipo que me va a hacer la peluquería?\"",
+      "assistant": "¡Claro! Vamos a verificar los precios para ti. También te diré quién será tu peluquero. Un momento por favor.",
+      "next_action": "ANSWER",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {}
+        }
+      ],
+      "timestamp": "2025-10-07T15:49:04.950869"
+    },
+    {
+      "turn": 4,
+      "client": "\"Ok, che, no hay prisa. ¿Cuánto sale un corte de pelo y cómo se llama el tipo que me tocará? Quiero saber si vale la pena pedirle un peinado también...\"",
+      "assistant": "¡Claro! Un corte de cabello oscila entre $3500 y $6000, según el profesional elegido. ¿Te gustaría saber más sobre cada uno para ver cuál es tu mejor opción?",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T15:49:08.154704"
+    },
+    {
+      "turn": 5,
+      "client": "\"Hmm, que complicado... ¿Cuáles son los profesionales y sus precios, che?\"",
+      "assistant": "Entiendo que necesitas información sobre los profesionales. Te mando la lista de precios y servicios para que puedas elegir quién te atiende.",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T15:49:10.575285"
+    },
+    {
+      "turn": 6,
+      "client": "\"Genial, gracias por el tiempo! ¿Podrías mandarme el listado de precios de cada uno y cuál es el profesional más económico pero con buenas reseñas?\"",
+      "assistant": "¡Claro! Te enviaré un listado de precios para cada profesional que ofrece cortes de cabello. Enseguida te mando la info.",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T15:49:13.491231"
+    },
+    {
+      "turn": 7,
+      "client": "\"Ok, gracias. También me gustaría saber qué tipo de corte son los más populares con ellos y si tienen algún descuento o promoción actual\".",
+      "assistant": "Claro, te ayudo con eso. ¿Quieres saber cuáles son los cortes más populares y si hay alguna promoción vigente para corte de cabello?",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_active_promotions",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T15:49:16.090724"
+    },
+    {
+      "turn": 8,
+      "client": "\"Sí, che! Me gustaría saber por qué los cortes más populares son en cada uno de ellos. Y si tienen algún descuento o promo actual para un primer corte, ¿me podrían dar una buena oferta?\"",
+      "assistant": "¡Claro! Busco ahora las promociones vigentes para un primer corte. También te cuento sobre los cortes más populares en un momento.",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_active_promotions",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T15:49:18.985017"
+    }
+  ],
+  "timestamp": "2025-10-07T15:48:57.105897"
+}

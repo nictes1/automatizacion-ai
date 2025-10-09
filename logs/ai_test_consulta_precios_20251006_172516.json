@@ -1,0 +1,12 @@
+{
+  "scenario": "consulta_precios",
+  "goal": "Quiero saber los precios de todos los servicios y quiénes son los profesionales antes de decidir",
+  "turns": 1,
+  "max_turns": 8,
+  "duration_seconds": 0.004409,
+  "goal_achieved": false,
+  "goal_failed": false,
+  "failure_reason": "Error en AI Client: Client error '404 Not Found' for url 'http://localhost:11434/api/chat'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404",
+  "conversation_log": [],
+  "timestamp": "2025-10-06T17:25:16.880572"
+}

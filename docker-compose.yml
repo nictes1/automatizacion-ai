@@ -1,55 +1,62 @@
-# =====================================================
-# PULPOAI COMPLETE MICROSERVICES ORCHESTRATION
-# =====================================================
-# Orquestación completa de todos los microservicios
-# Incluye: Database, RAG, Orchestrator, Actions, n8n
-# =====================================================
-
 version: '3.8'
 
 services:
-  # =====================================================
-  # DATABASE SERVICES
-  # =====================================================
-  
-  # PostgreSQL Database
+  # ==========================================
+  # APLICACIÓN PRINCIPAL
+  # ==========================================
+  pulpo-app:
+    build: .
+    container_name: pulpo-app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://pulpo:pulpo@postgres:5432/pulpo
+      - REDIS_URL=redis://redis:6379/1
+      - CANARY_ENABLED=true
+      - CANARY_PERCENTAGE=0.1
+      - CANARY_STRATEGY=percentage
+      - LOG_LEVEL=INFO
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/metrics/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ==========================================
+  # BASE DE DATOS
+  # ==========================================
   postgres:
-    image: pgvector/pgvector:pg16
+    image: postgres:15-alpine
     container_name: pulpo-postgres
     environment:
-      POSTGRES_DB: pulpo
-      POSTGRES_USER: pulpo
-      POSTGRES_PASSWORD: pulpo
-      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+      - POSTGRES_DB=pulpo
+      - POSTGRES_USER=pulpo
+      - POSTGRES_PASSWORD=pulpo
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/init:/docker-entrypoint-initdb.d
-    command: >
-      postgres
-      -c shared_preload_libraries=vector
-      -c max_connections=200
-      -c shared_buffers=256MB
-      -c effective_cache_size=1GB
-      -c maintenance_work_mem=64MB
-      -c checkpoint_completion_target=0.9
-      -c wal_buffers=16MB
-      -c default_statistics_target=100
-      -c random_page_cost=1.1
-      -c effective_io_concurrency=200
-      -c work_mem=4MB
-      -c min_wal_size=1GB
-      -c max_wal_size=4GB
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U pulpo -d pulpo"]
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - pulpo-network
 
-  # Redis Cache
+  # ==========================================
+  # REDIS
+  # ==========================================
   redis:
     image: redis:7-alpine
     container_name: pulpo-redis
@@ -57,196 +64,23 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - pulpo-network
 
-  # =====================================================
-  # AI SERVICES
-  # =====================================================
-  
-  # Ollama for embeddings
-  ollama:
-    image: ollama/ollama:latest
-    container_name: pulpo-ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    environment:
-      - OLLAMA_HOST=0.0.0.0
-    networks:
-      - pulpo-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # =====================================================
-  # PULPOAI MICROSERVICES
-  # =====================================================
-  
-  # RAG Service
-  rag:
-    build:
-      context: .
-      dockerfile: Dockerfile.rag
-    container_name: pulpo-rag
-    ports:
-      - "8007:8007"
-    environment:
-      - DATABASE_URL=postgresql://pulpo:pulpo@postgres:5432/pulpo
-      - REDIS_URL=redis://redis:6379
-      - OLLAMA_URL=http://ollama:11434
-      - JWT_SECRET=your-secret-key-here
-      - JWT_ALGORITHM=HS256
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      ollama:
-        condition: service_healthy
-    volumes:
-      - ./rag/src:/app/src
-      - ./rag/uploads:/app/uploads
-    networks:
-      - pulpo-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8007/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Orchestrator Service
-  orchestrator:
-    build:
-      context: ./orchestrator
-      dockerfile: Dockerfile
-    container_name: pulpo-orchestrator
-    ports:
-      - "8005:8005"
-    environment:
-      - DATABASE_URL=postgresql://pulpo:pulpo@postgres:5432/pulpo
-      - REDIS_URL=redis://redis:6379
-      - RAG_URL=http://rag:8007
-      - ACTIONS_URL=http://actions:8006
-      - OLLAMA_URL=http://ollama:11434
-      - OLLAMA_MODEL=qwen2.5:14b
-      - JWT_SECRET=your-secret-key-here
-      - JWT_ALGORITHM=HS256
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rag:
-        condition: service_healthy
-      actions:
-        condition: service_healthy
-    volumes:
-      - ./orchestrator/src:/app/src
-    networks:
-      - pulpo-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Actions Service
-  actions:
-    build:
-      context: ./actions
-      dockerfile: Dockerfile
-    container_name: pulpo-actions
-    ports:
-      - "8006:8006"
-    environment:
-      - DATABASE_URL=postgresql://pulpo:pulpo@postgres:5432/pulpo
-      - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=your-secret-key-here
-      - JWT_ALGORITHM=HS256
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - ./actions/src:/app/src
-    networks:
-      - pulpo-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # =====================================================
-  # WORKFLOW ORCHESTRATION
-  # =====================================================
-  
-  # n8n Workflow Engine
-  n8n:
-    image: n8nio/n8n:latest
-    container_name: pulpo-n8n
-    ports:
-      - "5678:5678"
-    environment:
-      - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=admin
-      - N8N_BASIC_AUTH_PASSWORD=admin123
-      - N8N_HOST=0.0.0.0
-      - N8N_PORT=5678
-      - N8N_PROTOCOL=http
-      - WEBHOOK_URL=http://localhost:5678/
-      - GENERIC_TIMEZONE=America/Argentina/Buenos_Aires
-      - N8N_LOG_LEVEL=info
-      - N8N_METRICS=true
-      - N8N_DIAGNOSTICS_ENABLED=true
-      - N8N_SECURE_COOKIE=false
-      - N8N_RUNNERS_ENABLED=true
-    volumes:
-      - n8n_data:/home/node/.n8n
-      - ./n8n:/home/node/.n8n/workflows
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      orchestrator:
-        condition: service_healthy
-      actions:
-        condition: service_healthy
-      rag:
-        condition: service_healthy
-    networks:
-      - pulpo-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5678/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # =====================================================
-  # MONITORING SERVICES
-  # =====================================================
-  
-  # Prometheus
+  # ==========================================
+  # PROMETHEUS (MÉTRICAS)
+  # ==========================================
   prometheus:
     image: prom/prometheus:latest
     container_name: pulpo-prometheus
     ports:
       - "9090:9090"
     volumes:
-      - ./monitoring/prometheus_config.yml:/etc/prometheus/prometheus.yml
-      - ./monitoring/prometheus_rules.yml:/etc/prometheus/rules.yml
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -255,70 +89,49 @@ services:
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--storage.tsdb.retention.time=200h'
       - '--web.enable-lifecycle'
-    networks:
-      - pulpo-network
+    restart: unless-stopped
 
-  # Grafana
+  # ==========================================
+  # GRAFANA (DASHBOARDS)
+  # ==========================================
   grafana:
     image: grafana/grafana:latest
     container_name: pulpo-grafana
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./config/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./config/grafana/datasources:/etc/grafana/provisioning/datasources
+    restart: unless-stopped
     depends_on:
       - prometheus
-    networks:
-      - pulpo-network
 
-  # =====================================================
-  # ADMINISTRATION SERVICES
-  # =====================================================
-  
-  # pgAdmin
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: pulpo-pgadmin
+  # ==========================================
+  # NGINX (REVERSE PROXY)
+  # ==========================================
+  nginx:
+    image: nginx:alpine
+    container_name: pulpo-nginx
     ports:
-      - "8080:80"
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@pulpo.ai
-      PGADMIN_DEFAULT_PASSWORD: admin123
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      - "80:80"
+      - "443:443"
     volumes:
-      - pgadmin_data:/var/lib/pgadmin
+      - ./config/nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
     depends_on:
-      - postgres
-    networks:
-      - pulpo-network
-
-# =====================================================
-# VOLUMES
-# =====================================================
+      - pulpo-app
+    restart: unless-stopped
 
 volumes:
   postgres_data:
-    driver: local
   redis_data:
-    driver: local
-  ollama_data:
-    driver: local
-  n8n_data:
-    driver: local
   prometheus_data:
-    driver: local
   grafana_data:
-    driver: local
-  pgadmin_data:
-    driver: local
-
-# =====================================================
-# NETWORKS
-# =====================================================
 
 networks:
-  pulpo-network:
-    driver: bridge
+  default:
     name: pulpo-network

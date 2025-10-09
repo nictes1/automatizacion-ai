@@ -18,6 +18,7 @@ class VerticalConfig:
     actions: list
     language: str
     timezone: str
+    intent_examples: list  # Ejemplos para detección de intent por LLM
 
 class VerticalManager:
     def __init__(self):
@@ -28,7 +29,7 @@ class VerticalManager:
         return {
             "gastronomia": VerticalConfig(
                 name="Gastronomía",
-                system_prompt="""Eres un asistente de restaurante inteligente. 
+                system_prompt="""Eres un asistente de restaurante inteligente.
 Responde de manera amigable y profesional a las consultas de los clientes sobre:
 - Menú y platos disponibles
 - Reservas y disponibilidad
@@ -36,13 +37,23 @@ Responde de manera amigable y profesional a las consultas de los clientes sobre:
 - Horarios de atención
 - Precios y promociones
 
-Siempre mantén un tono amigable y profesional. Si no tienes información específica, 
+Siempre mantén un tono amigable y profesional. Si no tienes información específica,
 ofrece contactar con el restaurante o pedir más detalles.""",
                 intents=["consultar_menu", "hacer_reserva", "hacer_pedido", "consultar_horarios", "consultar_precios"],
                 entities=["plato", "cantidad", "fecha", "hora", "personas", "precio"],
                 actions=["search_menu", "create_reservation", "create_order", "get_hours", "get_prices"],
                 language="es",
-                timezone="America/Bogota"
+                timezone="America/Bogota",
+                intent_examples=[
+                    '"¿Qué tienen en el menú?" → info_query',
+                    '"¿Cuánto sale la pizza margherita?" → info_query',
+                    '"¿Hacen delivery?" → info_query',
+                    '"Quiero pedir una pizza napolitana" → execute_action',
+                    '"Necesito reservar mesa para 4 personas" → execute_action',
+                    '"Quiero hacer un pedido para llevar" → execute_action',
+                    '"Cancelar mi pedido" → modify_action',
+                    '"Hola, buen día" → general_chat'
+                ]
             ),
             
             "inmobiliaria": VerticalConfig(
@@ -61,26 +72,82 @@ ofrece contactar con un asesor o pedir más detalles.""",
                 entities=["tipo_propiedad", "ubicacion", "precio", "fecha", "hora", "metros"],
                 actions=["search_properties", "schedule_visit", "get_prices", "get_financing", "send_info"],
                 language="es",
-                timezone="America/Bogota"
+                timezone="America/Bogota",
+                intent_examples=[
+                    '"¿Qué propiedades tienen en venta?" → info_query',
+                    '"¿Cuánto sale un apartamento en Palermo?" → info_query',
+                    '"¿Tienen casas de 3 ambientes?" → info_query',
+                    '"Quiero agendar visita para mañana" → execute_action',
+                    '"Necesito ver el departamento de la calle X" → execute_action',
+                    '"Quiero más información sobre financiación" → info_query',
+                    '"Cancelar mi visita programada" → modify_action',
+                    '"Gracias por la info" → general_chat'
+                ]
             ),
             
             "servicios": VerticalConfig(
                 name="Servicios",
-                system_prompt="""Eres un asistente de servicios inteligente.
-Responde de manera amigable y profesional a las consultas de clientes sobre:
-- Servicios disponibles
-- Horarios y disponibilidad
-- Precios y paquetes
-- Citas y reservas
-- Información de contacto
+                system_prompt="""Eres un asistente virtual de peluquería profesional y amigable.
 
-Siempre mantén un tono amigable y profesional. Si no tienes información específica,
-ofrece contactar con el servicio o pedir más detalles.""",
-                intents=["consultar_servicios", "agendar_cita", "consultar_precios", "consultar_horarios", "solicitar_info"],
-                entities=["servicio", "fecha", "hora", "precio", "duracion"],
-                actions=["search_services", "schedule_appointment", "get_prices", "get_hours", "send_info"],
+REGLAS CRÍTICAS:
+1. **USA SIEMPRE el "Contexto del sistema"** cuando esté disponible
+2. **NUNCA inventes** precios, nombres de profesionales, horarios o disponibilidad
+3. Si el contexto tiene datos específicos (precios, nombres, horarios), **MENCIÓNALOS EXACTAMENTE**
+4. Si NO tienes información en el contexto, admítelo: "Déjame consultar eso"
+
+FLUJO DE CONSULTAS:
+- Si preguntan por servicios/precios/profesionales → Menciona nombres y precios EXACTOS del contexto
+- Ejemplo: "Tenemos corte con Carlos a $3500, Juan a $4500 y María a $6000"
+- Si preguntan disponibilidad → Usa horarios del contexto, NO inventes
+
+FLUJO DE AGENDAMIENTO (recolectar en orden):
+1. **Servicio** (ej: corte, coloración)
+2. **Fecha** (ej: mañana, viernes, 10/10)
+3. **Horario** (ej: 10am, por la tarde)
+4. **Nombre del cliente** (solo nombre, ej: "Juan")
+5. **Email** (OPCIONAL - preguntar UNA sola vez):
+   - "¿Me pasás tu email para enviarte la confirmación al calendario?"
+   - Si dice "no tengo" / "no uso" → Seguir SIN email, NO insistir
+   - Continuar: "Dale, sin problema. [Confirmar turno]"
+6. **Profesional preferido** (OPCIONAL):
+   - Si el cliente menciona un profesional, úsalo
+   - Si NO menciona, asignar automáticamente según disponibilidad
+
+CONFIRMACIÓN FINAL (formato exacto):
+✅ Listo! Tenés turno para [Servicio] con [Profesional]
+el [Día DD/MM] a las [HH:MM]hs.
+📍 Te esperamos 15 minutos antes.
+
+IMPORTANTE:
+- NO mencionar "te envío invitación" ni "te confirmamos antes"
+- NO volver a preguntar datos que el cliente ya dio
+- Si el cliente ya dijo su nombre, NO preguntar "¿cuál es tu nombre?" de nuevo
+
+TONO:
+- Amigable y cercano (estilo WhatsApp argentino: che, dale, perfecto)
+- Directo y eficiente (no dar rodeos)
+- Profesional pero no formal
+
+Siempre mantén un tono amigable y profesional.""",
+                intents=["consultar_servicios", "agendar_cita", "consultar_precios", "consultar_horarios", "consultar_profesionales"],
+                entities=["servicio", "fecha", "hora", "precio", "duracion", "profesional", "staff_preference"],
+                actions=["search_services", "schedule_appointment", "get_prices", "get_hours", "get_staff_info"],
                 language="es",
-                timezone="America/Bogota"
+                timezone="America/Bogota",
+                intent_examples=[
+                    '"¿Cuánto sale el corte de pelo?" → info_query',
+                    '"¿Qué servicios ofrecen?" → info_query',
+                    '"¿Cuáles son los horarios de atención?" → info_query',
+                    '"¿Quién me puede atender?" → info_query',
+                    '"¿Tienen profesionales especializados en coloración?" → info_query',
+                    '"Quiero turno para mañana a las 10" → execute_action',
+                    '"Necesito agendar corte de pelo" → execute_action',
+                    '"Quiero sacar cita con María" → execute_action',
+                    '"Cancelar mi turno de mañana" → modify_action',
+                    '"Cambiar la hora de mi cita" → modify_action',
+                    '"Hola, cómo estás?" → general_chat',
+                    '"Gracias, perfecto" → general_chat'
+                ]
             )
         }
     

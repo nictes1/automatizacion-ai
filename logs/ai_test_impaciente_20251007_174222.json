@@ -1,0 +1,60 @@
+{
+  "scenario": "impaciente",
+  "goal": "Necesito un turno YA para hoy, no importa el precio ni el profesional",
+  "turns": 5,
+  "max_turns": 5,
+  "duration_seconds": 18.654971,
+  "goal_achieved": false,
+  "goal_failed": false,
+  "failure_reason": null,
+  "conversation_log": [
+    {
+      "turn": 1,
+      "client": "\"necesito turno para hoy, che, cuanto sale?\"",
+      "assistant": "¡Hola! Perfecto, necesitas un turno para hoy. ¿Me decís qué servicio te gustaría y tu nombre, por favor? También me ayudas con el email para la confirmación.",
+      "next_action": "GREET",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T17:42:06.247089"
+    },
+    {
+      "turn": 2,
+      "client": "\"no me interesa eso, solo quiero saber cuanto sale cualquier cosa, no importa lo que haga\"",
+      "assistant": "Claro, para que te quedes tranquilo. Tenemos corte con Carlos a $3500, Juan a $4500 y María a $6000. Los precios varían según el profesional elegido.",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:42:10.484891"
+    },
+    {
+      "turn": 3,
+      "client": "\"no me importa quién ni qué precio, solo quiero turno hoy, ¿tenés algo para hoy?\"",
+      "assistant": "¡Claro! Te anoto para hoy. ¿Cuál es tu nombre y a qué hora te gustaría venir?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T17:42:14.704782"
+    },
+    {
+      "turn": 4,
+      "client": "\"quiero venir YA, no mañana ni pasado, HOY, cuanto más temprano mejor\"",
+      "assistant": "¡Claro! Entiendo que quieres venir hoy, ¿me pasas tu nombre y a qué hora te gustaría agendar?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T17:42:18.355932"
+    },
+    {
+      "turn": 5,
+      "client": "\"me llamo Tomás, no sé la hora exacta pero me da igual, necesito ir YA\"",
+      "assistant": "¡Hola Tomás! Perfecto, necesitas un corte de cabello para el martes. ¿Me pasas tu email por favor? Así te confirmo el turno.",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T17:42:22.363841"
+    }
+  ],
+  "timestamp": "2025-10-07T17:42:04.209464"
+}

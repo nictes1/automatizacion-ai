@@ -1,0 +1,311 @@
+name: CI/CD Pipeline - PulpoAI Agent System
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  PYTHON_VERSION: "3.11"
+  COVERAGE_THRESHOLD: 85
+
+jobs:
+  # ==========================================
+  # LINTING & FORMATTING
+  # ==========================================
+  lint:
+    name: 🔍 Linting & Formatting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install black flake8 mypy bandit isort
+          pip install -r requirements.txt
+
+      - name: Black (code formatting)
+        run: black --check --diff .
+
+      - name: isort (import sorting)
+        run: isort --check-only --diff .
+
+      - name: Flake8 (linting)
+        run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: MyPy (type checking)
+        run: mypy services/ --ignore-missing-imports
+
+      - name: Bandit (security)
+        run: bandit -r services/ -f json -o bandit-report.json || true
+
+  # ==========================================
+  # UNIT TESTS & COVERAGE
+  # ==========================================
+  test:
+    name: 🧪 Unit Tests & Coverage
+    runs-on: ubuntu-latest
+    needs: lint
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: pulpo
+          POSTGRES_USER: pulpo
+          POSTGRES_DB: pulpo
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov pytest-mock
+
+      - name: Wait for services
+        run: |
+          sleep 10  # Give services time to start
+
+      - name: Run tests with coverage
+        run: |
+          python -m pytest tests/ \
+            --cov=services \
+            --cov-report=xml \
+            --cov-report=html \
+            --cov-report=term-missing \
+            --cov-fail-under=${{ env.COVERAGE_THRESHOLD }} \
+            --junitxml=test-results.xml \
+            -v
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: true
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-results
+          path: test-results.xml
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: coverage-report
+          path: htmlcov/
+
+  # ==========================================
+  # SMOKE TESTS E2E
+  # ==========================================
+  smoke-tests:
+    name: 💨 Smoke Tests E2E
+    runs-on: ubuntu-latest
+    needs: test
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: pulpo
+          POSTGRES_USER: pulpo
+          POSTGRES_DB: pulpo
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio
+
+      - name: Wait for services
+        run: sleep 10
+
+      - name: Run smoke tests
+        run: |
+          python -m pytest tests/smoke/ \
+            --tb=short \
+            -v \
+            --maxfail=3
+
+  # ==========================================
+  # SECURITY SCAN
+  # ==========================================
+  security:
+    name: 🔒 Security Scan
+    runs-on: ubuntu-latest
+    needs: lint
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install bandit safety
+
+      - name: Run Bandit security scan
+        run: |
+          bandit -r services/ -f json -o bandit-report.json
+          bandit -r services/ -ll
+
+      - name: Run Safety check
+        run: |
+          safety check --json --output safety-report.json || true
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+            safety-report.json
+
+  # ==========================================
+  # BUILD & DEPLOY (on main branch)
+  # ==========================================
+  build:
+    name: 🏗️ Build & Deploy
+    runs-on: ubuntu-latest
+    needs: [test, smoke-tests, security]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run pre-deployment tests
+        run: |
+          python tests/run_tests.py all
+
+      - name: Build Docker image
+        run: |
+          docker build -t pulpo-ai:latest .
+
+      - name: Deploy to staging
+        run: |
+          echo "🚀 Deploying to staging environment..."
+          # Add your deployment commands here
+          # docker-compose -f docker-compose.staging.yml up -d
+
+      - name: Run post-deployment health check
+        run: |
+          echo "🏥 Running health checks..."
+          # Add health check commands here
+          # curl -f http://staging.pulpo.ai/health || exit 1
+
+  # ==========================================
+  # NOTIFICATIONS
+  # ==========================================
+  notify:
+    name: 📢 Notifications
+    runs-on: ubuntu-latest
+    needs: [lint, test, smoke-tests, security, build]
+    if: always()
+    
+    steps:
+      - name: Notify success
+        if: needs.test.result == 'success' && needs.smoke-tests.result == 'success'
+        run: |
+          echo "✅ All checks passed! Ready for deployment."
+
+      - name: Notify failure
+        if: needs.test.result == 'failure' || needs.smoke-tests.result == 'failure'
+        run: |
+          echo "❌ Some checks failed. Please review the logs."
+          exit 1

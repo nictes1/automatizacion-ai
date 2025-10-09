@@ -11,11 +11,15 @@ import json
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, asdict
 from enum import Enum
+import psycopg2
 
 # Configuración
 ORCHESTRATOR_URL = "http://localhost:8005"
 OLLAMA_URL = "http://localhost:11434"
 WORKSPACE_ID = "550e8400-e29b-41d4-a716-446655440000"
+CHANNEL_ID = "650e8400-e29b-41d4-a716-446655440000"
+CONTACT_ID = "750e8400-e29b-41d4-a716-446655440000"
+DATABASE_URL = "postgresql://pulpo:pulpo@localhost:5432/pulpo"
 
 # =========================
 # Escenarios de Test
@@ -220,6 +224,24 @@ SCENARIOS = [
         expected_slots=["property_type", "preferred_date", "preferred_time", "client_name", "client_email"]
     )
 ]
+
+# =========================
+# Database Helper
+# =========================
+
+def create_conversation_in_db(conversation_id: str) -> None:
+    """Crea una conversación en la DB para que actions service pueda registrar acciones"""
+    conn = psycopg2.connect(DATABASE_URL)
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO pulpo.conversations (id, workspace_id, channel_id, contact_id, status, metadata)
+                VALUES (%s, %s, %s, %s, 'active', '{}'::jsonb)
+                ON CONFLICT (id) DO NOTHING
+            """, (conversation_id, WORKSPACE_ID, CHANNEL_ID, CONTACT_ID))
+            conn.commit()
+    finally:
+        conn.close()
 
 # =========================
 # Cliente AI
@@ -484,6 +506,10 @@ class TestRunner:
 
         ai_client = AIClient(scenario)
         conversation_id = str(uuid4())
+
+        # Crear conversación en DB para que actions service funcione
+        create_conversation_in_db(conversation_id)
+
         current_state = {}
         conversation_log = []
 

@@ -30,7 +30,7 @@ async def get_db_connection(workspace_id: str) -> asyncpg.Connection:
 
 async def get_available_services(workspace_id: str, category: Optional[str] = None) -> Dict[str, Any]:
     """
-    Tool: Obtiene lista de servicios disponibles
+    Tool: Obtiene lista de servicios disponibles con rangos de precio por staff
 
     Args:
         workspace_id: ID del workspace
@@ -40,8 +40,20 @@ async def get_available_services(workspace_id: str, category: Optional[str] = No
         {
             "success": true,
             "services": [
-                {"id": "uuid", "name": "Corte", "price": 2500, "duration": 45},
-                ...
+                {
+                    "id": "uuid",
+                    "name": "Corte de Cabello",
+                    "description": "...",
+                    "price_min": 3500,
+                    "price_max": 6000,
+                    "currency": "ARS",
+                    "staff_count": 3,
+                    "staff_options": [
+                        {"name": "Carlos", "price": 3500, "duration": 35},
+                        {"name": "Juan", "price": 4500, "duration": 30},
+                        {"name": "María", "price": 6000, "duration": 45}
+                    ]
+                }
             ]
         }
     """
@@ -50,31 +62,54 @@ async def get_available_services(workspace_id: str, category: Optional[str] = No
     try:
         query = """
             SELECT
-                id::text, name, description, category,
-                price, currency, duration_minutes
-            FROM pulpo.service_types
-            WHERE workspace_id = $1 AND is_active = true
+                st.id::text as service_id,
+                st.name as service_name,
+                st.description,
+                COALESCE(MIN(ss.price), 0) as price_min,
+                COALESCE(MAX(ss.price), 0) as price_max,
+                COALESCE(ss.currency, st.currency, 'ARS') as currency,
+                COUNT(DISTINCT ss.staff_id) as staff_count,
+                COALESCE(
+                    json_agg(
+                        json_build_object(
+                            'staff_id', s.id::text,
+                            'staff_name', s.name,
+                            'price', ss.price,
+                            'duration_minutes', ss.duration_minutes
+                        ) ORDER BY ss.price
+                    ) FILTER (WHERE ss.id IS NOT NULL),
+                    '[]'::json
+                ) as staff_options
+            FROM pulpo.service_types st
+            LEFT JOIN pulpo.staff_services ss ON ss.service_type_id = st.id AND ss.is_active = true
+            LEFT JOIN pulpo.staff s ON s.id = ss.staff_id AND s.is_active = true
+            WHERE st.workspace_id = $1 AND st.is_active = true
+            GROUP BY st.id, st.name, st.description, ss.currency, st.currency
+            ORDER BY price_min
         """
         params = [workspace_id]
-
-        if category:
-            query += " AND category = $2"
-            params.append(category)
-
-        query += " ORDER BY price"
 
         rows = await conn.fetch(query, *params)
 
         services = []
         for row in rows:
+            # Parse staff_options if it's a JSON string
+            staff_opts = row['staff_options'] if row['staff_options'] else []
+            if isinstance(staff_opts, str):
+                try:
+                    staff_opts = json.loads(staff_opts)
+                except:
+                    staff_opts = []
+
             services.append({
-                "id": row['id'],
-                "name": row['name'],
+                "id": row['service_id'],
+                "name": row['service_name'],
                 "description": row['description'],
-                "category": row['category'],
-                "price": float(row['price']) if row['price'] else 0,
+                "price_min": float(row['price_min']) if row['price_min'] else 0,
+                "price_max": float(row['price_max']) if row['price_max'] else 0,
                 "currency": row['currency'],
-                "duration_minutes": row['duration_minutes']
+                "staff_count": row['staff_count'],
+                "staff_options": staff_opts
             })
 
         return {
@@ -122,7 +157,7 @@ async def check_service_availability(
     try:
         # Get service info
         service = await conn.fetchrow("""
-            SELECT id::text, name, duration_minutes, price, currency
+            SELECT id::text, name, duration_minutes, price_reference as price, currency
             FROM pulpo.service_types
             WHERE workspace_id = $1 AND name ILIKE $2 AND is_active = true
             LIMIT 1

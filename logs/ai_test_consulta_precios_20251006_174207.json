@@ -1,0 +1,126 @@
+{
+  "scenario": "consulta_precios",
+  "goal": "Quiero saber los precios de todos los servicios y quiénes son los profesionales antes de decidir",
+  "turns": 8,
+  "max_turns": 8,
+  "duration_seconds": 26.424639,
+  "goal_achieved": false,
+  "goal_failed": false,
+  "failure_reason": null,
+  "conversation_log": [
+    {
+      "turn": 1,
+      "client": "\"holaaa, estoy buscando un lugar para hacerme un corte y miré tu peluquería, como sale? Tenés algún sitio disponible esta semana?\"",
+      "assistant": "¡Hola! Claro, somos Sofía y nos alegra que te intereses en nuestra peluquería. ¿Querés saber cuánto cuesta un corte de cabello o algún otro servicio específico? Estoy viendo la disponibilidad para esta semana.",
+      "next_action": "GREET",
+      "tool_calls": [],
+      "timestamp": "2025-10-06T17:41:45.420848"
+    },
+    {
+      "turn": 2,
+      "client": "\"gracias por el respaldo, me gustaría saber cuanto sale el corte básico y también si tenés alguna promoción en estos días. ¿Y cuál es tu horario de atención?\"",
+      "assistant": "¡Claro! Déjame ver qué promociones tenemos disponibles y consultar los precios del corte básico. También te aviso cuáles son nuestros horarios de atención.",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_active_promotions",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-06T17:41:48.022641"
+    },
+    {
+      "turn": 3,
+      "client": "\"Perfecto, che, no me importa qué día vaya si hay alguna oferta más conveniente\"",
+      "assistant": "¡Perfecto! Estoy de acuerdo que es genial aprovechar una oferta si hay alguna. Déjame verificar cuáles son las promociones vigentes para que podamos elegir la mejor opción.",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_active_promotions",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-06T17:41:50.524198"
+    },
+    {
+      "turn": 4,
+      "client": "\"Genial, gracias por tu ayuda. También me interesaría saber qué profesionales están disponibles. ¿Quién es el peluquero más barato y también quién es el mejor (no sé si eso suena raro)\"",
+      "assistant": "¡Claro! Vamos a revisar quién es el peluquero más económico y cuál es nuestra recomendación para el mejor servicio de corte. Un momento mientras lo averiguo.",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-06T17:41:53.331355"
+    },
+    {
+      "turn": 5,
+      "client": "\"Genial, gracias por la información. ¿Y si me dieran opciones de los dos tipos? Me gustaría tener en cuenta tanto el precio como la calidad del servicio. ¿Podés decirme quiénes son para que pueda elegir?\"",
+      "assistant": "¡Claro! Para un corte de cabello tenemos a Carlos Ramírez por $3500, Juan Pérez por $4500 y María García por $6000. ¿Te gustaría que te reserve el turno con alguno de ellos?",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-06T17:41:56.712085"
+    },
+    {
+      "turn": 6,
+      "client": "\"Uhmm... eso parece caro che, no sé si sea posible pagar algo más asequible en mi presupuesto. Y la verdad es que no sé quién es qué mejor. ¿Podrías decirme un poco sobre cada uno de ellos para que pueda decidir?\"",
+      "assistant": "Claro, entiendo. Déjame mostrarte un poco más sobre cada profesional para que puedas elegir el que mejor se ajuste a lo que buscas. Los precios son: Carlos Ramírez $3500 (35 min), Juan Pérez $4500 (30 min) y María García $6000 (45 min). ¿Puedo ayudarte a decidirte entre ellos?",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-06T17:42:00.681236"
+    },
+    {
+      "turn": 7,
+      "client": "\"Sí, che, eso sería genial. Pero me gustaría saber un poco más sobre cada uno de ellos. ¿Cuál es el estilo que más les gusta trabajar? ¿Son para cortes modernos o clásicos?\"",
+      "assistant": "¡Claro! Carlos Ramírez prefiere trabajar cortes modernos y creativos, Juan Pérez se especializa en looks clásicos pero con un toque actual y María García tiene una combinación única que va desde lo tradicional hasta lo más vanguardista. ¿Con cuál de ellos te gustaría agendar t...",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-06T17:42:04.311510"
+    },
+    {
+      "turn": 8,
+      "client": "\"Espera, espera... ¡Eso es genial! Me encantaría ver a Carlos Ramírez por su estilo moderno, pero no sé si voy a poder permitirme el precio. ¿Tienen alguna promoción o algo así para clientes que sean nuevos?\"",
+      "assistant": "¡Claro que sí! Veamos qué promociones tenemos para clientes nuevos. También puedo verificar si hay alguna oferta especial con Carlos, ya que me dijiste que preferías trabajar con él.",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_active_promotions",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-06T17:42:07.182930"
+    }
+  ],
+  "timestamp": "2025-10-06T17:41:41.258578"
+}

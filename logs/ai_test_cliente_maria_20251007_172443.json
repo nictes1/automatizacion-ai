@@ -1,0 +1,96 @@
+{
+  "scenario": "cliente_maria",
+  "goal": "Soy cliente habitual de María García y necesito un turno para la semana que viene",
+  "turns": 6,
+  "max_turns": 6,
+  "duration_seconds": 19.104635,
+  "goal_achieved": false,
+  "goal_failed": false,
+  "failure_reason": null,
+  "conversation_log": [
+    {
+      "turn": 1,
+      "client": "\"hola, necesito un turno para esta semana\"",
+      "assistant": "¡Hola! Perfecto, ¿qué tipo de servicio te gustaría para esta semana? 😊",
+      "next_action": "GREET",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T17:24:25.433328"
+    },
+    {
+      "turn": 2,
+      "client": "\"un corte normal, che. ¿cuando puedo ir?\"",
+      "assistant": "¡Claro! Tenemos corte de cabello disponible desde $3500 con Carlos, hasta $6000 con María. ¿Cuál es tu preferencia? También te puedo decir los horarios disponibles.",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:24:29.420242"
+    },
+    {
+      "turn": 3,
+      "client": "\"me gustaria ir con maria, pero soy barato che, me puede dar una de las opciones mas economicas que tiene disponible\"",
+      "assistant": "Claro, tenemos corte de cabello con Carlos a $3500, Juan a $4500 y María a $6000. Si estás buscando algo más económico, te recomendaría ir con Carlos o Juan.",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:24:32.469223"
+    },
+    {
+      "turn": 4,
+      "client": "\"no quiero ir con Carlos ni Juan, me toca con María si no es posible algo más económico, ¿qué otra cosa tengo?\"",
+      "assistant": "Perfecto, para el corte de cabello tenemos a María García que cobra $6000 o si prefieres algo más económico podrías optar por un servicio como el brushing que es desde $3500. ¿Cuál te interesa?",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:24:35.836437"
+    },
+    {
+      "turn": 5,
+      "client": "\"no me convence el brushing, quiero el corte con maria pero la verdad es que no tengo el presupuesto para $6000, ¿y si no puedo ir esta semana?\"",
+      "assistant": "Entiendo Pablo, el corte con María tiene un costo de $6000 que puede ser alto. Tenemos otros cortes disponibles: Carlos a $3500 y Juan a $4500. ¿Te interesa alguno de estos? Si no, puedo revisar la semana próxima.",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:24:39.477804"
+    },
+    {
+      "turn": 6,
+      "client": "\"entiendo perfectamente, pero el problema es que ya tengo compromisos para esta semana, lo que me gustaría es poder ir la siguiente con María, ¿cuando tiene disponibilidad?\"",
+      "assistant": "Perfecto, te anoto que prefieres ir la semana que viene con María. Déjame verificar sus horarios disponibles.",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:24:42.682579"
+    }
+  ],
+  "timestamp": "2025-10-07T17:24:24.078841"
+}

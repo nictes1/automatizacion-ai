@@ -1,0 +1,93 @@
+{
+  "scenario": "quiero_agendar_turno",
+  "goal": "Quiero agendar un turno para cortarme el pelo mañana a las 10am con el profesional más económico",
+  "turns": 10,
+  "max_turns": 10,
+  "duration_seconds": 15.932278,
+  "goal_achieved": false,
+  "goal_failed": false,
+  "failure_reason": null,
+  "conversation_log": [
+    {
+      "turn": 1,
+      "client": "\"Hola, che, tengo una consulta sobre los precios del corte\"",
+      "assistant": "¡Hola! ¿Cómo estás? Claro, te ayudo con la consulta sobre precios para el corte de cabello. Dejame un momento por favor.",
+      "next_action": "GREET",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:48:41.225488"
+    },
+    {
+      "turn": 2,
+      "client": "\"Quiero saber cual es mas barato, porfavor\"",
+      "assistant": "¡Claro! Para poder darte el mejor precio, necesito saber cuándo te gustaría venir. ¿Cuál es tu preferencia en cuanto a fecha?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:48:43.207909"
+    },
+    {
+      "turn": 3,
+      "client": "\"Quiero mañana, pero quiero que me digas cual es mas barato primero, che\"",
+      "assistant": "¡Claro! Querés que te diga cuál es más económico. Mañana entonces, ¿correcto? Ahora revisaré los precios para cada profesional.",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:48:45.786337"
+    },
+    {
+      "turn": 4,
+      "client": "\"Sí, mañana. ¿Cuánto sale el corte con cada peluquero?\"",
+      "assistant": "¡Claro! Veamos los precios para un corte de cabello mañana. ¿Podrías decirme a qué hora te gustaría venir?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:48:48.764980"
+    },
+    {
+      "turn": 5,
+      "client": "\"Muy bien, mañana a las 10\"",
+      "assistant": "Perfecto, te anoto para mañana a las 10hs. ¿Podrías darme tu nombre y email por favor?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:48:50.774932"
+    },
+    {
+      "turn": 6,
+      "client": "\"No tengo mail, pero mi nombre es Pablo\"",
+      "assistant": "Te conecto con un agente humano en un momento.",
+      "next_action": "ASK_HUMAN",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:48:51.482888"
+    },
+    {
+      "turn": 7,
+      "client": "\"¡Genial! No hay problema. Entonces no sé si hay algo más barato que lo que se me iba a ofrecer...\"",
+      "assistant": "Ya escalé tu caso. En breve te escribe un agente 🙌",
+      "next_action": "ASK_HUMAN",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:48:52.351733"
+    },
+    {
+      "turn": 8,
+      "client": "\"¡Genial! ¡Espero tener el precio más bajo entonces!\"",
+      "assistant": "Ya escalé tu caso. En breve te escribe un agente 🙌",
+      "next_action": "ASK_HUMAN",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:48:53.104949"
+    },
+    {
+      "turn": 9,
+      "client": "\"No, no hay nada, espero turno mañana\"",
+      "assistant": "Ya escalé tu caso. En breve te escribe un agente 🙌",
+      "next_action": "ASK_HUMAN",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:48:53.811620"
+    },
+    {
+      "turn": 10,
+      "client": "\"Che, ¿y qué pasó con el precio más bajo que me prometiste?\"",
+      "assistant": "Ya escalé tu caso. En breve te escribe un agente 🙌",
+      "next_action": "ASK_HUMAN",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:48:54.585659"
+    }
+  ],
+  "timestamp": "2025-10-07T15:48:39.154231"
+}

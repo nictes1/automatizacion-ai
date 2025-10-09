@@ -1,0 +1,116 @@
+{
+  "scenario": "confundido",
+  "goal": "No sé bien qué quiero, pregunto cosas random y cambio de tema",
+  "turns": 12,
+  "max_turns": 12,
+  "duration_seconds": 19.396687,
+  "goal_achieved": false,
+  "goal_failed": false,
+  "failure_reason": null,
+  "conversation_log": [
+    {
+      "turn": 1,
+      "client": "\"hola, tengo una cita en mi agenda que dice peluqueria, pero creo que me confundi, ¿me podés ayudar a recordar?\"",
+      "assistant": "¡Hola! No te preocupes, estaré encantada de ayudarte. ¿Podrías decirme cuál es el servicio que tenías pensado y la fecha aproximada en la que estaba programada tu cita?",
+      "next_action": "GREET",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:49:36.270022"
+    },
+    {
+      "turn": 2,
+      "client": "\"no sé... creo que era para un corte, pero no estoy seguro, tengo que mirar en mi agenda de ahorita\"\n\n(espacio)",
+      "assistant": "¡Entiendo! Vamos a reservar un corte de cabello entonces. ¿Qué día te gustaría agendar tu cita? Recuerda que tenemos horarios disponibles desde las 9 AM hasta las 8 PM.",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T15:49:38.989319"
+    },
+    {
+      "turn": 3,
+      "client": "\"y tengo una pregunta, ¿son los precios iguales para todos los cortes o varían dependiendo de lo que quiero?\"",
+      "assistant": "¡Claro! Los precios pueden variar según la profesional que te atienda y el tipo de corte. ¿Cuándo te gustaría venir para tu cita?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:49:41.456728"
+    },
+    {
+      "turn": 4,
+      "client": "\"espera, espera... quiero ir mañana a las 10, pero si los precios varían, ¿podría saber cuánto sale un simple cepillado entonces?\"",
+      "assistant": "¡Claro! Si prefieres ir mañana a las 10hs puedo verificar los precios para un cepillado. ¿Me das tu nombre y email por favor?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:49:43.937558"
+    },
+    {
+      "turn": 5,
+      "client": "\"espera, no necesito cepillado, quiero algo más... pero me preocupa el costo, ¿podrías decirme si hay una promoción o algo?\"",
+      "assistant": "¡Claro! Entiendo tu preocupación. Podemos revisar si hay alguna promoción vigente para ti. ¿Qué otro servicio te gustaría realizar? Ya que ya no necesitas un cepillado, cuéntame qué otra cosa necesitas y a qué hora prefieres venir mañana.",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:49:46.721195"
+    },
+    {
+      "turn": 6,
+      "client": "\"yo quiero... uh... el corte de barba... si, eso es. Y mi amigo me dijo que aquí te pueden hacer algún diseño con las cejas, ¿eso sale caro?\"",
+      "assistant": "Te conecto con un agente humano en un momento.",
+      "next_action": "ASK_HUMAN",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:49:47.693265"
+    },
+    {
+      "turn": 7,
+      "client": "\"¿Qué pasó con el corte de barba y las cejas? ¡Me conectaron con alguien nuevo!\"",
+      "assistant": "Ya escalé tu caso. En breve te escribe un agente 🙌",
+      "next_action": "ASK_HUMAN",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:49:48.535733"
+    },
+    {
+      "turn": 8,
+      "client": "\"Espera, no quiero que nadie más me atienda. Quiero hablar con quien estaba primero. ¿Volviste a conectarlo?\"",
+      "assistant": "Ya escalé tu caso. En breve te escribe un agente 🙌",
+      "next_action": "ASK_HUMAN",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:49:49.417120"
+    },
+    {
+      "turn": 9,
+      "client": "\"Espera, che no quiero hablar con ningún agente. Quiero que me atienda el chico que me dijo que tenía turno mañana a las 10, ¿me queda eso?\"",
+      "assistant": "Ya escalé tu caso. En breve te escribe un agente 🙌",
+      "next_action": "ASK_HUMAN",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:49:50.368355"
+    },
+    {
+      "turn": 10,
+      "client": "\"No, no, noooo! Quiero hablar con el chico que me dijo eso, ¡no con ningún agente!\"",
+      "assistant": "Ya escalé tu caso. En breve te escribe un agente 🙌",
+      "next_action": "ASK_HUMAN",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:49:51.211769"
+    },
+    {
+      "turn": 11,
+      "client": "\"¿Un agente?! Quiero hablar con el que me dijo turno mañana a las 10, ¿no hay nadie más en la peluquería?\"",
+      "assistant": "Ya escalé tu caso. En breve te escribe un agente 🙌",
+      "next_action": "ASK_HUMAN",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:49:52.122128"
+    },
+    {
+      "turn": 12,
+      "client": "\"¿Un agente?! ¡Quiero hablar con mi pelo! ¿Dónde está el chico que me dijo que podía hacerme un corte de trenza?\"",
+      "assistant": "Ya escalé tu caso. En breve te escribe un agente 🙌",
+      "next_action": "ASK_HUMAN",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:49:53.049833"
+    }
+  ],
+  "timestamp": "2025-10-07T15:49:34.153756"
+}

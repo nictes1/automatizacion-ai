@@ -1,0 +1,192 @@
+# Tool Manifest - Vertical: Servicios (Peluquerías, Spas, etc.)
+# Versión: v1
+# Última actualización: 2025-10-09
+
+workspace_id: null  # Default manifest (se puede override por workspace en DB)
+vertical: "servicios"
+version: "v1"
+
+tools:
+  # ==========================================
+  # READ TOOLS - Consulta de información
+  # ==========================================
+
+  - name: "get_services"
+    description: |
+      Lista todos los servicios disponibles con sus precios y duraciones.
+      Admite filtro opcional por texto (ej: "corte", "color", "manicura").
+      Úsalo cuando el cliente pregunte por servicios, precios o duración.
+    args_schema:
+      type: object
+      properties:
+        q:
+          type: string
+          description: "Filtro de búsqueda opcional (nombre del servicio)"
+      additionalProperties: false
+    requires_slots: []
+    scopes: ["read"]
+    tier_required: "basic"
+    rate_limit_per_min: 60
+    cost_tokens: 50
+    timeout_ms: 3000
+
+  - name: "get_staff"
+    description: |
+      Lista los profesionales disponibles en el negocio.
+      Devuelve nombre, especialidades y disponibilidad general.
+      Úsalo cuando el cliente pregunte por estilistas/profesionales.
+    args_schema:
+      type: object
+      properties:
+        specialty:
+          type: string
+          description: "Filtrar por especialidad (ej: 'coloración')"
+      additionalProperties: false
+    requires_slots: []
+    scopes: ["read"]
+    tier_required: "basic"
+    rate_limit_per_min: 60
+    cost_tokens: 50
+    timeout_ms: 3000
+
+  - name: "get_availability"
+    description: |
+      Consulta disponibilidad de horarios para un servicio específico.
+      Requiere: fecha, tipo de servicio y opcionalmente profesional.
+      Devuelve slots disponibles (ej: ["10:00", "11:00", "14:00"]).
+      IMPORTANTE: Llamar siempre ANTES de book_appointment.
+    args_schema:
+      type: object
+      properties:
+        service_type:
+          type: string
+          description: "Nombre del servicio (ej: 'Corte de Cabello')"
+        date:
+          type: string
+          format: date
+          description: "Fecha en formato YYYY-MM-DD"
+        staff_id:
+          type: string
+          description: "ID del profesional (opcional)"
+        duration_min:
+          type: integer
+          minimum: 15
+          description: "Duración estimada en minutos (opcional)"
+      required: ["service_type", "date"]
+      additionalProperties: false
+    requires_slots: ["service_type", "preferred_date"]
+    scopes: ["read"]
+    tier_required: "basic"
+    rate_limit_per_min: 30
+    cost_tokens: 100
+    timeout_ms: 5000
+
+  # ==========================================
+  # WRITE TOOLS - Acciones transaccionales
+  # ==========================================
+
+  - name: "book_appointment"
+    description: |
+      Crea un turno/reserva confirmado en el sistema.
+      CRÍTICO: Validar disponibilidad con get_availability ANTES.
+      Requiere: servicio, fecha, hora, nombre del cliente.
+      Email es opcional pero recomendado para confirmaciones.
+    args_schema:
+      type: object
+      properties:
+        service_type:
+          type: string
+          description: "Nombre exacto del servicio"
+        preferred_date:
+          type: string
+          format: date
+          description: "Fecha en formato YYYY-MM-DD"
+        preferred_time:
+          type: string
+          pattern: "^([01]?[0-9]|2[0-3]):[0-5][0-9]$"
+          description: "Hora en formato HH:MM (ej: '14:00')"
+        client_name:
+          type: string
+          minLength: 2
+          description: "Nombre completo del cliente"
+        client_email:
+          type: string
+          format: email
+          description: "Email del cliente (opcional pero recomendado)"
+        client_phone:
+          type: string
+          pattern: "^\\+?[1-9]\\d{1,14}$"
+          description: "Teléfono del cliente (opcional)"
+        staff_id:
+          type: string
+          description: "ID del profesional preferido (opcional)"
+        notes:
+          type: string
+          maxLength: 500
+          description: "Notas adicionales (opcional)"
+      required: ["service_type", "preferred_date", "preferred_time", "client_name"]
+      additionalProperties: false
+    requires_slots: ["service_type", "preferred_date", "preferred_time", "client_name"]
+    scopes: ["write"]
+    tier_required: "basic"
+    rate_limit_per_min: 10
+    cost_tokens: 200
+    timeout_ms: 10000
+
+  - name: "cancel_appointment"
+    description: |
+      Cancela un turno existente.
+      Requiere: ID del turno o datos para identificarlo.
+      Solo disponible para tier PRO y superior.
+    args_schema:
+      type: object
+      properties:
+        appointment_id:
+          type: string
+          description: "ID del turno a cancelar"
+        client_name:
+          type: string
+          description: "Nombre del cliente (para validación)"
+        client_email:
+          type: string
+          format: email
+          description: "Email del cliente (para validación)"
+        reason:
+          type: string
+          maxLength: 200
+          description: "Motivo de cancelación (opcional)"
+      required: ["appointment_id"]
+      additionalProperties: false
+    requires_slots: []
+    scopes: ["write"]
+    tier_required: "pro"
+    rate_limit_per_min: 5
+    cost_tokens: 150
+    timeout_ms: 5000
+
+  - name: "reschedule_appointment"
+    description: |
+      Modifica fecha/hora de un turno existente.
+      Solo disponible para tier MAX.
+    args_schema:
+      type: object
+      properties:
+        appointment_id:
+          type: string
+          description: "ID del turno a modificar"
+        new_date:
+          type: string
+          format: date
+          description: "Nueva fecha (YYYY-MM-DD)"
+        new_time:
+          type: string
+          pattern: "^([01]?[0-9]|2[0-3]):[0-5][0-9]$"
+          description: "Nueva hora (HH:MM)"
+      required: ["appointment_id", "new_date", "new_time"]
+      additionalProperties: false
+    requires_slots: []
+    scopes: ["write"]
+    tier_required: "max"
+    rate_limit_per_min: 5
+    cost_tokens: 200
+    timeout_ms: 10000

@@ -1,0 +1,98 @@
+{
+  "scenario": "consulta_precios",
+  "goal": "Quiero saber los precios de todos los servicios y quiénes son los profesionales antes de decidir",
+  "turns": 8,
+  "max_turns": 8,
+  "duration_seconds": 23.844986,
+  "goal_achieved": false,
+  "goal_failed": false,
+  "failure_reason": null,
+  "conversation_log": [
+    {
+      "turn": 1,
+      "client": "Hola che, estoy buscando hacerme un corte y quería saber si me podés decir los precios antes de pasar a la peluquería.",
+      "assistant": "¡Hola! Perfecto, entiendo que estás interesado en saber los precios para un corte de cabello. ¿Podrías darme tu nombre y correo electrónico para enviarte la información? 🌟",
+      "next_action": "GREET",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:42:58.798685"
+    },
+    {
+      "turn": 2,
+      "client": "\"Hola che, no tengo tiempo para eso, me podés decir al menos si el corte simple sale 20 o algo más?\"",
+      "assistant": "Claro, déjame consultar un momento. Los precios varían según el profesional, pero un corte simple generalmente está entre $20 y $35. ¿Te alcanza esta info o prefieres que te diga exactamente cuánto sale?",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T15:43:01.649794"
+    },
+    {
+      "turn": 3,
+      "client": "\"Che, me quedaría bien saber de quién depende el precio, qué diferencia hay si voy a fulanita en lugar de fulano, y si tenés algún descuento para hoy...\"",
+      "assistant": "¡Claro! Vamos a ver las diferencias de precios entre profesionales para un corte de cabello y si tenemos alguna promoción hoy. Un momento mientras te busco esa información.",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_active_promotions",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T15:43:04.291675"
+    },
+    {
+      "turn": 4,
+      "client": "\"Perfecto, gracias por la atención che. Y me podrías decir también quiénes son los profesionales que voy a poder elegir para el corte? Quiero saber si alguno de ellos tiene algún estilo en particular o experiencia con cabellos como el mío.\"",
+      "assistant": "¡Claro! Te voy a pasar la información sobre los profesionales disponibles. ¿Podrías decirme cuándo te gustaría cortarte el pelo? Estoy anotando tu interés en elegir un profesional en particular.",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:43:07.446854"
+    },
+    {
+      "turn": 5,
+      "client": "\"Che, bueno, me gustaría venir mañana, pero no sé si puedo llegar temprano. ¿Podría acordar un turno con algún profesional que tenga experiencia en cabellos rizados?\"",
+      "assistant": "¡Perfecto! Me interesa que busques un profesional con experiencia en cabellos rizados. ¿Podrías decirme cuál es la fecha en la que te gustaría venir, por favor?",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:43:10.385801"
+    },
+    {
+      "turn": 6,
+      "client": "\"Bueno, me quedaría bien el martes o el miércoles de esta semana. Pero no sé si podés decirme si Fulanita tiene disponibilidad para los rizados. Me dijo que era especialista en eso.\"",
+      "assistant": "¡Claro! Vamos a verificar la disponibilidad de Fulanita para rizos este martes y miércoles. ¿Me das tu nombre y correo electrónico para confirmar el turno?",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T15:43:13.871099"
+    },
+    {
+      "turn": 7,
+      "client": "\"Un momento che, no me parece que necesites el mail ni nada. Solo quiero asegurarme de que Fulanita esté disponible. ¿Puedo llamar al local o qué pasará con el turno?\"",
+      "assistant": "¡Claro! Entendido. Tu prioridad es que esté disponible Fulanita para tu corte de cabello este martes o miércoles, ¿verdad? Te confirmo que puedo ayudarte a verificar la disponibilidad y agendar tu turno sin necesidad del mail ni teléfono si así lo prefieres. ¿Podrías decirme c...",
+      "next_action": "SLOT_FILL",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:43:18.486760"
+    },
+    {
+      "turn": 8,
+      "client": "\"Me vale con eso, gracias! Entonces, para clarificar: Fulanita es especialista en rizos y tiene disponibilidad este martes o miércoles. Y cuanto sale el corte de cabello, ¿o tengo que preguntarle a otro profesional?\"",
+      "assistant": "Te conecto con un agente humano en un momento.",
+      "next_action": "ASK_HUMAN",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T15:43:19.624500"
+    }
+  ],
+  "timestamp": "2025-10-07T15:42:56.279730"
+}

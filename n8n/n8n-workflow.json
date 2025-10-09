@@ -107,10 +107,8 @@
       {
         "parameters": {
           "operation": "executeQuery",
-          "query": "SELECT pulpo.persist_outbound($1, $2, $3, 'text', 'actions', $4) AS message_id;",
-          "options": {
-            "queryReplacement": "={{ $('Parse Intent').item.json.workspace_id }}, {{ $('Parse Intent').item.json.conversation_id }}, {{ $json.message }}, {{ JSON.stringify({action: $('Split Tool Calls').item.json.name, result: $json.data}) }}"
-          }
+          "query": "=SELECT pulpo.persist_outbound(\n  '{{ $('Parse Intent').item.json.workspace_id }}'::uuid,\n  '{{ $('Parse Intent').item.json.conversation_id }}'::uuid,\n  '{{ $json.message }}',\n  'text',\n  'actions',\n  '{{ JSON.stringify({action: $('Split Tool Calls').item.json.name, result: $json.data}) }}'::jsonb\n) AS message_id;",
+          "options": {}
         },
         "type": "n8n-nodes-base.postgres",
         "typeVersion": 2.5,
@@ -337,10 +335,8 @@
       {
         "parameters": {
           "operation": "executeQuery",
-          "query": "SELECT w.id::text AS workspace_id, COALESCE(w.settings->>'vertical', 'gastronomia')::text AS vertical FROM pulpo.workspaces w WHERE w.id = $1::uuid LIMIT 1;",
-          "options": {
-            "queryReplacement": "={{ $('Resolve Channel').item.json.ws_id }}"
-          }
+          "query": "=SELECT \n  w.id::text AS workspace_id, \n  COALESCE(w.vertical, 'gastronomia')::text AS vertical \nFROM pulpo.workspaces w \nWHERE w.id = '{{ $('Resolve Channel').item.json.ws_id }}'::uuid \nLIMIT 1;",
+          "options": {}
         },
         "type": "n8n-nodes-base.postgres",
         "typeVersion": 2.5,
@@ -360,10 +356,8 @@
       {
         "parameters": {
           "operation": "executeQuery",
-          "query": "SELECT pulpo.persist_inbound($1, $2, $3, $4, $5) AS result;",
-          "options": {
-            "queryReplacement": "={{ $('Resolve Channel').item.json.ws_id }}, {{ $('Resolve Channel').item.json.channel_id }}, {{ $('Normalize Input').item.json.user_phone }}, {{ $('Normalize Input').item.json.wamid }}, {{ $('Normalize Input').item.json.text }}"
-          }
+          "query": "=SELECT pulpo.persist_inbound(\n  '{{ $('Resolve Channel').item.json.ws_id }}'::uuid,\n  '{{ $('Resolve Channel').item.json.channel_id }}'::uuid,\n  '{{ $('Normalize Input').item.json.user_phone }}',\n  '{{ $('Normalize Input').item.json.wamid }}',\n  '{{ $('Normalize Input').item.json.text }}'\n) AS result;",
+          "options": {}
         },
         "type": "n8n-nodes-base.postgres",
         "typeVersion": 2.5,

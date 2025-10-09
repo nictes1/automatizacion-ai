@@ -1,0 +1,96 @@
+{
+  "scenario": "cliente_maria",
+  "goal": "Soy cliente habitual de María García y necesito un turno para la semana que viene",
+  "turns": 6,
+  "max_turns": 6,
+  "duration_seconds": 17.39513,
+  "goal_achieved": false,
+  "goal_failed": false,
+  "failure_reason": null,
+  "conversation_log": [
+    {
+      "turn": 1,
+      "client": "\"Che, necesito hacerme un corte para la semana que viene ¿puedes ponerme un turno?\"",
+      "assistant": "¡Hola! Perfecto, te anoto para un corte de cabello la semana que viene. Para confirmarlo necesito tu nombre y email por favor.",
+      "next_action": "GREET",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T17:03:43.022958"
+    },
+    {
+      "turn": 2,
+      "client": "\"mi nombre es Matías, y el mail lo tengo en mi agenda, ¿puedo mandártelo luego?\"",
+      "assistant": "¡Hola Matías! Claro, no hay problema. Cuando quieras mandarme tu email te anoto el turno. Mientras tanto, ¿sabés qué corte te gustaría hacer? Tenemos corte con Carlos a $3500, Juan a $4500 y María a $6000",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:03:47.056882"
+    },
+    {
+      "turn": 3,
+      "client": "\"ma' che no te lo dije que ya tengo un turno con María de antes\"",
+      "assistant": "Perfecto Matías, como ya tenés turno con María, ¿te sirvo de algo si te consulto los horarios disponibles para otros profesionales? Tenemos opciones con Carlos a $3500, Juan a $4500 y María a $6000.",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:03:50.025376"
+    },
+    {
+      "turn": 4,
+      "client": "\"no necesito otra opción, el mío es con María la semana que viene, así q no hace falta consultarme los horarios de otros\"",
+      "assistant": "¡Perfecto Matías! Si ya tenés fecha y horario con María para la semana que viene, no hay problema. Nos vemos entonces en ese turno específico.",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_business_hours",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:03:52.759932"
+    },
+    {
+      "turn": 5,
+      "client": "\"Genial, gracias che. La semana que viene entonces voy con María a las...\"",
+      "assistant": "¡Claro Matías! Entonces quieren agendar para la semana que viene con María, ¿verdad? Anótame la fecha exacta y el día de la semana que prefieran para confirmar el turno.",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:03:55.243631"
+    },
+    {
+      "turn": 6,
+      "client": "\"Sí che, viernes a las 12. Por favor confirmen\"",
+      "assistant": "Perfecto Matías, te anoto para el viernes a las 12hs con María García por $6000. ¿Me pasás tu email para enviarte la confirmación?",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:03:57.883275"
+    }
+  ],
+  "timestamp": "2025-10-07T17:03:40.988736"
+}

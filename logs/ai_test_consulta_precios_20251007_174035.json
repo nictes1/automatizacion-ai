@@ -1,0 +1,126 @@
+{
+  "scenario": "consulta_precios",
+  "goal": "Quiero saber los precios de todos los servicios y quiénes son los profesionales antes de decidir",
+  "turns": 8,
+  "max_turns": 8,
+  "duration_seconds": 36.104869,
+  "goal_achieved": false,
+  "goal_failed": false,
+  "failure_reason": null,
+  "conversation_log": [
+    {
+      "turn": 1,
+      "client": "\"Hola, estoy pensando en venir a tu peluqueria pero antes me gustaria saber los precios de todos los servicios. ¿Puedes mandarme una lista?\"",
+      "assistant": "¡Hola! Perfecto, entiendo que te gustaría saber los precios de nuestros servicios antes de decidirte a visitarnos. ¡No hay problema! Te puedo enviar una lista con todos ellos. ¿Me das tu nombre y email para enviarte la información?",
+      "next_action": "GREET",
+      "tool_calls": [],
+      "timestamp": "2025-10-07T17:40:02.340553"
+    },
+    {
+      "turn": 2,
+      "client": "\"Che, no tengo tanto tiempo para llenar formularios... ¿Podés mandarme solo los precios en un mensaje?\"",
+      "assistant": "¡Claro! Tenemos corte de cabello con Carlos a $3500, Juan a $4500 y María a $6000. ¿Te alcanza esta info o necesitás algo más?",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:40:06.510759"
+    },
+    {
+      "turn": 3,
+      "client": "\"Che, gracias por la info! Me gustaría saber que tan rápido atienden al día de hoy y si hay diferencia en el precio según el profesional\"",
+      "assistant": "¡Claro! Hoy estamos atendiendo normalmente, así que no hay problema en la rapidez del servicio. Los precios varían según el profesional: con Carlos es $3500, Juan cobra $4500 y María tiene un precio de $6000.",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:40:10.910824"
+    },
+    {
+      "turn": 4,
+      "client": "\"Entendido, gracias por la info! Pero una pregunta más... ¿qué hay de los tratamientos capilares, por ejemplo el tratamiento de hidratación? ¿Y si quiero hacer un corte y un baño capilar a la vez?\"",
+      "assistant": "¡Claro! Contamos con un tratamiento de hidratación muy efectivo. Además, también es posible combinar un corte de cabello con un baño capilar. Los precios varían según el profesional, te paso la lista: Tenemos corte con Carlos a $3500, Juan a $4500 y María a $6000. Para el trat...",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:40:16.166122"
+    },
+    {
+      "turn": 5,
+      "client": "\"Che, no quería volver a hablar de eso... ¿Podés darme solo los precios para un corte + baño capilar en total? ¡Quiero evitar las listas largas!\"",
+      "assistant": "¡Claro! Para un corte de cabello, tenemos Carlos a $3500, Juan a $4500 y María a $6000. El baño capilar está incluido en todos los cortes. ¿Te alcanza con esta info?",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:40:21.300101"
+    },
+    {
+      "turn": 6,
+      "client": "\"Si es así, ¿cuál es el precio total si quiero hacer un corte de cabello + baño capilar con cada uno de ellos?\"",
+      "assistant": "Para un corte de cabello + baño capilar, tenemos a Carlos por $3500, Juan por $4500 y María por $6000. ¿Con cuál te gustaría concertar tu turno?",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:40:26.009709"
+    },
+    {
+      "turn": 7,
+      "client": "\"Espera, no entiendo... Si el baño capilar está incluido en los precios que me dijiste antes, ¿por qué cambió el precio de Carlos y Juan?\"",
+      "assistant": "Veo tu punto, pero los precios varían según el profesional y su tiempo dedicado al servicio. Tenemos corte de cabello desde $3500 con Carlos, $4500 con Juan y $6000 con María. El baño capilar está incluido en todos ellos.",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:40:30.889345"
+    },
+    {
+      "turn": 8,
+      "client": "\"Che, entiendo lo que me decís, pero no quiero gastar un ojo de la cara... ¿Cuál es el servicio más económico total?\"",
+      "assistant": "Entiendo, buscamos lo más económico. Tenemos corte de cabello con Carlos a $3500, Juan a $4500 y María a $6000. ¿Querés reservar un turno con Carlos para ahorrar?",
+      "next_action": "RETRIEVE_CONTEXT",
+      "tool_calls": [
+        {
+          "name": "get_available_services",
+          "arguments": {
+            "workspace_id": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        }
+      ],
+      "timestamp": "2025-10-07T17:40:35.442371"
+    }
+  ],
+  "timestamp": "2025-10-07T17:39:59.838390"
+}
