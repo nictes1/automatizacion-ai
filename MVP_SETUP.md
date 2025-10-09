@@ -107,7 +107,7 @@ curl http://localhost:5678/healthz
 1. En n8n, ir al nodo **"Send Twilio"**
 2. Click en **Credentials** → **Create New Credential**
 3. Ingresar:
-   - **Account SID**: `AC8985bbeb3dd697f49a2e3aeff9828f74` (o el tuyo)
+   - **Account SID**: `ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX` (o el tuyo)
    - **Auth Token**: (tu token de Twilio)
 4. **Save**
 

@@ -200,7 +200,7 @@
       {
         "parameters": {
           "method": "POST",
-          "url": "https://api.twilio.com/2010-04-01/Accounts/AC8985bbeb3dd697f49a2e3aeff9828f74/Messages.json",
+          "url": "https://api.twilio.com/2010-04-01/Accounts/ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/Messages.json",
           "authentication": "predefinedCredentialType",
           "nodeCredentialType": "twilioApi",
           "sendHeaders": true,
