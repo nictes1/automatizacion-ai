@@ -24,7 +24,17 @@ CREATE TABLE pulpo.workspaces(
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
   domain text,
+  vertical text NOT NULL CHECK (vertical IN ('gastronomia','inmobiliaria','servicios')),
   plan text NOT NULL CHECK (plan IN ('basic','premium','enterprise')),
+  business_name text,
+  address text,
+  phone text,
+  email text,
+  logo_url text,
+  website text,
+  description text,
+  business_calendar_email text,
+  calendar_settings jsonb DEFAULT '{}'::jsonb,
   settings jsonb DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
@@ -355,6 +365,8 @@ CREATE TABLE pulpo.error_logs(
 
 -- Core indexes
 CREATE INDEX idx_workspaces_plan ON pulpo.workspaces(plan);
+CREATE INDEX idx_workspaces_vertical ON pulpo.workspaces(vertical);
+CREATE INDEX idx_workspaces_calendar_email ON pulpo.workspaces(business_calendar_email);
 CREATE INDEX idx_conversations_workspace ON pulpo.conversations(workspace_id);
 CREATE INDEX idx_conversations_contact ON pulpo.conversations(contact_id);
 CREATE INDEX idx_messages_conversation ON pulpo.messages(conversation_id);

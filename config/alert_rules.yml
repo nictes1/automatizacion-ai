@@ -1,0 +1,96 @@
+groups:
+  - name: pulpo_alerts
+    interval: 30s
+    rules:
+      # ========================================================================
+      # ALERTAS CRÍTICAS - Servicios caídos
+      # ========================================================================
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Servicio {{ $labels.job }} está caído"
+          description: "El servicio {{ $labels.job }} no responde hace más de 1 minuto."
+
+      - alert: PulpoAppDown
+        expr: up{job="pulpo-app"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "PulpoAI aplicación principal está caída"
+          description: "La aplicación principal no responde. Sistema completamente inoperativo."
+
+      # ========================================================================
+      # ALERTAS DE PERFORMANCE - Latencia alta
+      # ========================================================================
+      - alert: HighRequestLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Latencia alta en {{ $labels.job }}"
+          description: "P95 de latencia es {{ $value }}s (umbral: 2s)."
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Tasa de errores alta en {{ $labels.job }}"
+          description: "Tasa de errores 5xx es {{ $value | humanizePercentage }}."
+
+      # ========================================================================
+      # ALERTAS DE RECURSOS - Memoria y conexiones
+      # ========================================================================
+      - alert: HighMemoryUsage
+        expr: (process_resident_memory_bytes / 1024 / 1024 / 1024) > 4
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Uso de memoria alto en {{ $labels.job }}"
+          description: "{{ $labels.job }} está usando {{ $value }}GB de RAM."
+
+      - alert: HighDatabaseConnections
+        expr: pg_stat_database_numbackends > 150
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Conexiones altas a PostgreSQL"
+          description: "Hay {{ $value }} conexiones activas (límite: 200)."
+
+      # ========================================================================
+      # ALERTAS DE NEGOCIO - Métricas específicas de PulpoAI
+      # ========================================================================
+      - alert: NoConversationsProcessed
+        expr: rate(pulpo_conversations_total[15m]) == 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No se están procesando conversaciones"
+          description: "No se han procesado conversaciones en los últimos 15 minutos."
+
+      - alert: LLMRequestFailures
+        expr: rate(pulpo_llm_requests_failed_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Fallos en requests al LLM"
+          description: "Tasa de fallos del LLM: {{ $value | humanizePercentage }}."
+
+      - alert: SlowLLMResponse
+        expr: histogram_quantile(0.95, rate(pulpo_llm_duration_seconds_bucket[5m])) > 10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Respuestas lentas del LLM"
+          description: "P95 de tiempo de respuesta del LLM: {{ $value }}s."

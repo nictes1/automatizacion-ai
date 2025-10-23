@@ -1,0 +1,26 @@
+{
+  "user_message": {
+    "text": "hola",
+    "message_id": "SM001",
+    "from": "+5492235261872",
+    "to": "+14155238886",
+    "waid": "5492235261872",
+    "timestamp_iso": "2025-01-16T10:00:00Z",
+    "locale": "es-AR"
+  },
+  "context": {
+    "platform": "twilio",
+    "channel": "whatsapp",
+    "business_name": "Estilo Total - Peluquería & Spa",
+    "vertical": "servicios"
+  },
+  "state": {
+    "fsm_state": null,
+    "slots": {},
+    "last_k_observations": []
+  }
+}
+
+
+
+

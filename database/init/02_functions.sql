@@ -441,3 +441,22 @@ BEGIN
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- =====================================================
+-- GOOGLE CALENDAR HELPER FUNCTIONS
+-- =====================================================
+
+-- Función helper: Obtener calendario del negocio
+CREATE OR REPLACE FUNCTION pulpo.get_business_calendar(p_workspace_id UUID)
+RETURNS TEXT AS $$
+DECLARE
+    v_calendar_email TEXT;
+BEGIN
+    SELECT business_calendar_email INTO v_calendar_email
+    FROM pulpo.workspaces
+    WHERE id = p_workspace_id;
+
+    RETURN v_calendar_email;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://pulpoai.com/schemas/planner.v1.json",
+  "title": "Planner Output Schema v1",
+  "description": "Schema para la salida del SLM Planner (decisión de tools)",
+  "type": "object",
+  "required": ["plan_version", "actions", "needs_confirmation"],
+  "properties": {
+    "plan_version": {
+      "type": "string",
+      "const": "v1",
+      "description": "Versión del schema del plan"
+    },
+    "actions": {
+      "type": "array",
+      "description": "Lista ordenada de tools a ejecutar",
+      "items": {
+        "type": "object",
+        "required": ["tool", "args"],
+        "properties": {
+          "tool": {
+            "type": "string",
+            "enum": [
+              "get_available_services",
+              "get_business_hours",
+              "check_service_availability",
+              "book_appointment",
+              "cancel_appointment",
+              "find_appointment_by_phone"
+            ],
+            "description": "Nombre exacto del tool a ejecutar"
+          },
+          "args": {
+            "type": "object",
+            "description": "Argumentos para el tool (sin workspace_id, se agrega automáticamente)",
+            "additionalProperties": true
+          },
+          "reasoning": {
+            "type": "string",
+            "maxLength": 150,
+            "description": "Por qué se llama este tool (opcional)"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxItems": 3
+    },
+    "needs_confirmation": {
+      "type": "boolean",
+      "description": "Si true, faltan datos obligatorios y se debe pedir confirmación antes de ejecutar"
+    },
+    "missing_slots": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "service_type",
+          "preferred_date",
+          "preferred_time",
+          "client_name",
+          "client_email",
+          "client_phone"
+        ]
+      },
+      "description": "Lista de slots que faltan (solo si needs_confirmation=true)"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Confianza en el plan generado"
+    }
+  },
+  "additionalProperties": false
+}
+
+
+
+
+

@@ -28,13 +28,18 @@ async def get_db_connection(workspace_id: str) -> asyncpg.Connection:
 # TOOLS - Para usar en orchestrator
 # =========================
 
-async def get_available_services(workspace_id: str, category: Optional[str] = None) -> Dict[str, Any]:
+async def get_available_services(
+    workspace_id: str,
+    category: Optional[str] = None,
+    q: Optional[str] = None
+) -> Dict[str, Any]:
     """
     Tool: Obtiene lista de servicios disponibles con rangos de precio por staff
 
     Args:
         workspace_id: ID del workspace
         category: Filtrar por categoría (hair, nails, etc.)
+        q: Búsqueda por texto (alias de category)
 
     Returns:
         {
@@ -57,6 +62,10 @@ async def get_available_services(workspace_id: str, category: Optional[str] = No
             ]
         }
     """
+    # Si q está presente, usarlo como category (backward compatibility)
+    if q and not category:
+        category = q
+
     conn = await get_db_connection(workspace_id)
 
     try:
@@ -131,7 +140,7 @@ async def get_available_services(workspace_id: str, category: Optional[str] = No
 
 async def check_service_availability(
     workspace_id: str,
-    service_name: str,
+    service_type: str,
     date_str: str,
     time_str: Optional[str] = None
 ) -> Dict[str, Any]:
@@ -140,7 +149,7 @@ async def check_service_availability(
 
     Args:
         workspace_id: ID del workspace
-        service_name: Nombre del servicio
+        service_type: Nombre del servicio
         date_str: Fecha en formato YYYY-MM-DD
         time_str: Hora en formato HH:MM (opcional)
 
@@ -161,12 +170,12 @@ async def check_service_availability(
             FROM pulpo.service_types
             WHERE workspace_id = $1 AND name ILIKE $2 AND is_active = true
             LIMIT 1
-        """, workspace_id, f"%{service_name}%")
+        """, workspace_id, f"%{service_type}%")
 
         if not service:
             return {
                 "success": False,
-                "error": f"Servicio '{service_name}' no encontrado",
+                "error": f"Servicio '{service_type}' no encontrado",
                 "available": False
             }
 
@@ -486,6 +495,176 @@ async def get_business_hours(workspace_id: str) -> Dict[str, Any]:
         await conn.close()
 
 
+async def book_appointment(
+    workspace_id: str,
+    service_type: str,
+    preferred_date: str,
+    preferred_time: str,
+    client_name: str,
+    client_email: str,
+    client_phone: Optional[str] = None,
+    staff_id: Optional[str] = None,
+    notes: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Tool: Confirma y reserva un turno para un servicio específico
+    
+    Args:
+        workspace_id: ID del workspace
+        service_type: Nombre del servicio (ej: 'Corte de Cabello')
+        preferred_date: Fecha deseada (YYYY-MM-DD)
+        preferred_time: Hora deseada (HH:MM)
+        client_name: Nombre completo del cliente
+        client_email: Email del cliente
+        client_phone: Teléfono del cliente (opcional)
+        staff_id: ID del profesional preferido (opcional)
+        notes: Notas adicionales (opcional)
+    
+    Returns:
+        {
+            "success": true,
+            "appointment_id": "uuid",
+            "service_name": "Corte de Cabello",
+            "staff_name": "Carlos",
+            "date": "2024-01-15",
+            "time": "10:00",
+            "client_name": "Juan Pérez",
+            "status": "confirmed"
+        }
+    """
+    conn = None
+    try:
+        conn = await get_db_connection(workspace_id)
+        
+        # 1. Verificar que el servicio existe
+        service_row = await conn.fetchrow("""
+            SELECT id, name, duration_minutes, price_reference
+            FROM pulpo.service_types 
+            WHERE workspace_id = $1 AND name ILIKE $2
+        """, workspace_id, f"%{service_type}%")
+        
+        if not service_row:
+            return {
+                "success": False,
+                "error": f"Servicio '{service_type}' no encontrado",
+                "available_services": await _get_service_names(conn, workspace_id)
+            }
+        
+        service_id = service_row['id']
+        service_name = service_row['name']
+        duration = service_row['duration_minutes']
+        
+        # 2. Verificar disponibilidad (double-check)
+        appointment_date = datetime.strptime(preferred_date, "%Y-%m-%d").date()
+        appointment_time = datetime.strptime(preferred_time, "%H:%M").time()
+        
+        # Verificar si ya hay una cita en ese horario
+        # Crear datetime con zona horaria UTC para comparar con la BD
+        from datetime import timezone
+        scheduled_datetime = datetime.combine(appointment_date, appointment_time, timezone.utc)
+        existing = await conn.fetchrow("""
+            SELECT id FROM pulpo.reservas 
+            WHERE workspace_id = $1 
+            AND scheduled_at = $2 
+            AND status IN ('confirmed', 'pending')
+        """, workspace_id, scheduled_datetime)
+        
+        if existing:
+            return {
+                "success": False,
+                "error": f"Horario {preferred_time} no disponible el {preferred_date}",
+                "suggestion": "Usa check_service_availability para ver horarios libres"
+            }
+        
+        # 3. Asignar staff automáticamente si no se especifica
+        if staff_id:
+            staff_row = await conn.fetchrow("""
+                SELECT id, name, email FROM pulpo.staff 
+                WHERE workspace_id = $1 AND id = $2
+            """, workspace_id, staff_id)
+        else:
+            # Asignar el primer staff disponible
+            staff_row = await conn.fetchrow("""
+                SELECT id, name, email FROM pulpo.staff 
+                WHERE workspace_id = $1 
+                ORDER BY name 
+                LIMIT 1
+            """, workspace_id)
+        
+        if not staff_row:
+            return {
+                "success": False,
+                "error": "No hay staff disponible para este servicio"
+            }
+        
+        # 4. Crear la reserva en BD
+        appointment_id = await conn.fetchval("""
+            INSERT INTO pulpo.reservas (
+                workspace_id, conversation_id, service_type_id, staff_id,
+                scheduled_at, duration_minutes,
+                client_name, client_email, client_phone,
+                status, notes, created_at
+            ) VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, 'confirmed', $10, NOW()
+            )
+            RETURNING id
+        """, workspace_id, "27a5f0d2-f531-4245-ab58-ca2207aa93cd", service_id, staff_row['id'], 
+            scheduled_datetime, duration,
+            client_name, client_email, client_phone, notes)
+        
+        # 5. Crear evento en Google Calendar (si está configurado)
+        google_event_id = None
+        business_calendar = await conn.fetchval("""
+            SELECT business_calendar_email FROM pulpo.workspaces WHERE id = $1
+        """, workspace_id)
+        
+        if business_calendar:
+            logger.info(f"📅 Google Calendar configurado: {business_calendar}")
+            # TODO: Implementar creación de evento en Google Calendar
+            # Por ahora solo logueamos que está configurado
+            google_event_id = "pending_google_calendar_integration"
+        else:
+            logger.info(f"📅 Google Calendar no configurado para workspace {workspace_id}")
+        
+        logger.info(f"✅ Cita creada: {appointment_id} para {client_name} el {preferred_date} a las {preferred_time}")
+        
+        return {
+            "success": True,
+            "appointment_id": str(appointment_id),
+            "service_name": service_name,
+            "staff_name": staff_row['name'],
+            "staff_email": staff_row['email'],
+            "date": preferred_date,
+            "time": preferred_time,
+            "duration_minutes": duration,
+            "client_name": client_name,
+            "client_email": client_email,
+            "status": "confirmed",
+            "notes": notes,
+            "google_event_id": google_event_id
+        }
+        
+    except Exception as e:
+        logger.error(f"Error creando cita: {e}")
+        return {
+            "success": False,
+            "error": f"Error interno: {str(e)}"
+        }
+    finally:
+        if conn:
+            await conn.close()
+
+
+async def _get_service_names(conn: asyncpg.Connection, workspace_id: str) -> List[str]:
+    """Helper para obtener nombres de servicios disponibles"""
+    rows = await conn.fetch("""
+        SELECT name FROM pulpo.service_types 
+        WHERE workspace_id = $1 
+        ORDER BY name
+    """, workspace_id)
+    return [row['name'] for row in rows]
+
+
 # =========================
 # TOOL REGISTRY - Para orchestrator
 # =========================
@@ -496,7 +675,8 @@ SERVICIOS_TOOLS = {
         "description": "Obtiene lista de servicios disponibles (corte, coloración, etc.) con precios y duración",
         "parameters": {
             "workspace_id": {"type": "string", "required": True},
-            "category": {"type": "string", "required": False, "description": "Filtrar por categoría (hair, nails, spa)"}
+            "category": {"type": "string", "required": False, "description": "Filtrar por categoría (hair, nails, spa)"},
+            "q": {"type": "string", "required": False, "description": "Búsqueda por texto en nombre del servicio"}
         }
     },
     "check_service_availability": {
@@ -504,7 +684,7 @@ SERVICIOS_TOOLS = {
         "description": "Verifica si hay disponibilidad para un servicio en fecha/hora específica. Retorna slots disponibles si no se especifica hora",
         "parameters": {
             "workspace_id": {"type": "string", "required": True},
-            "service_name": {"type": "string", "required": True, "description": "Nombre del servicio"},
+            "service_type": {"type": "string", "required": True, "description": "Nombre del servicio"},
             "date_str": {"type": "string", "required": True, "description": "Fecha en formato YYYY-MM-DD"},
             "time_str": {"type": "string", "required": False, "description": "Hora en formato HH:MM"}
         }
@@ -529,6 +709,21 @@ SERVICIOS_TOOLS = {
         "description": "Obtiene horarios de atención del negocio por día de semana",
         "parameters": {
             "workspace_id": {"type": "string", "required": True}
+        }
+    },
+    "book_appointment": {
+        "function": book_appointment,
+        "description": "Confirma y reserva un turno para un servicio específico. Requiere todos los datos del cliente y horario deseado",
+        "parameters": {
+            "workspace_id": {"type": "string", "required": True},
+            "service_type": {"type": "string", "required": True, "description": "Nombre del servicio (ej: 'Corte de Cabello')"},
+            "preferred_date": {"type": "string", "required": True, "description": "Fecha deseada (YYYY-MM-DD)"},
+            "preferred_time": {"type": "string", "required": True, "description": "Hora deseada (HH:MM)"},
+            "client_name": {"type": "string", "required": True, "description": "Nombre completo del cliente"},
+            "client_email": {"type": "string", "required": True, "description": "Email del cliente"},
+            "client_phone": {"type": "string", "required": False, "description": "Teléfono del cliente"},
+            "staff_id": {"type": "string", "required": False, "description": "ID del profesional preferido"},
+            "notes": {"type": "string", "required": False, "description": "Notas adicionales"}
         }
     }
 }

@@ -43,17 +43,17 @@ class StateChangeType(str, Enum):
 class ConversationStatePatch:
     """
     Patch para aplicar cambios al ConversationSnapshot
-    
+
     Representa cambios incrementales que deben aplicarse al estado
     sin mutar el estado original.
     """
     slots_patch: Dict[str, Any]                    # Slots a actualizar/agregar
     slots_to_remove: List[str]                     # Slots a eliminar
-    objective_update: Optional[str] = None         # Nuevo objetivo (si cambió)
-    summary_update: Optional[str] = None           # Nuevo summary (si relevante)
     last_k_observations: List[ToolObservation]     # Últimas K observaciones
     cache_invalidation_keys: List[str]             # Keys de cache a invalidar
     change_reasons: List[str]                      # Razones de los cambios
+    objective_update: Optional[str] = None         # Nuevo objetivo (si cambió)
+    summary_update: Optional[str] = None           # Nuevo summary (si relevante)
     confidence_score: float = 1.0                  # Confianza en los cambios
 
 
@@ -249,9 +249,9 @@ class StateReducer:
         result_data = observation.result
         
         # Extraer slots según el tipo de tool
-        if tool_name == "get_services":
+        if tool_name == "get_available_services":
             self._extract_services_slots(result_data, patch)
-        elif tool_name == "get_availability":
+        elif tool_name == "check_service_availability":
             self._extract_availability_slots(result_data, patch)
         elif tool_name == "book_appointment":
             self._extract_booking_slots(result_data, patch)
@@ -321,28 +321,39 @@ class StateReducer:
         patch.change_reasons.append(f"Duplicate call to {observation.tool} (idempotent)")
     
     def _extract_services_slots(self, result_data: Dict[str, Any], patch: ConversationStatePatch):
-        """Extrae slots de get_services"""
+        """Extrae slots de get_available_services"""
+        logger.info(f"[REDUCER] Extracting services slots from: {list(result_data.keys())}")
+
         if "services" in result_data:
             services = result_data["services"]
             if isinstance(services, list) and services:
                 # Guardar lista de servicios disponibles
                 service_names = [s.get("name", s.get("service_name", str(s))) for s in services if s]
                 patch.slots_patch["_available_services"] = service_names
-                
-                # Si hay precios, guardarlos
+
+                # Si hay precios, guardarlos con formato legible
                 prices = {}
                 for service in services:
                     if isinstance(service, dict):
                         name = service.get("name", service.get("service_name"))
-                        price = service.get("price", service.get("cost"))
-                        if name and price:
-                            prices[name] = price
-                
+                        price_min = service.get("price_min")
+                        price_max = service.get("price_max")
+                        currency = service.get("currency", "ARS")
+
+                        logger.info(f"[REDUCER] Service {name}: price_min={price_min}, price_max={price_max}")
+
+                        if name and (price_min is not None or price_max is not None):
+                            if price_min == price_max:
+                                prices[name] = f"${price_min:.0f} {currency}"
+                            else:
+                                prices[name] = f"${price_min:.0f}-${price_max:.0f} {currency}"
+
+                logger.info(f"[REDUCER] Extracted prices: {prices}")
                 if prices:
                     patch.slots_patch["_service_prices"] = prices
     
     def _extract_availability_slots(self, result_data: Dict[str, Any], patch: ConversationStatePatch):
-        """Extrae slots de get_availability"""
+        """Extrae slots de check_service_availability"""
         if "available_slots" in result_data:
             slots = result_data["available_slots"]
             if isinstance(slots, list) and slots:
@@ -395,11 +406,11 @@ class StateReducer:
         tool_name = observation.tool
         
         # Invalidar cache de servicios si cambió información relevante
-        if tool_name in ["get_services", "search_menu"]:
+        if tool_name in ["get_available_services", "search_menu"]:
             patch.cache_invalidation_keys.append("services_cache")
-        
+
         # Invalidar cache de disponibilidad si cambió
-        if tool_name in ["get_availability", "book_appointment", "cancel_appointment"]:
+        if tool_name in ["check_service_availability", "book_appointment", "cancel_appointment"]:
             patch.cache_invalidation_keys.append("availability_cache")
         
         # Invalidar cache de contexto si hay nuevos datos relevantes

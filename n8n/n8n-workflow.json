@@ -1,735 +1,743 @@
 {
-    "nodes": [
-      {
-        "parameters": {
-          "jsCode": "// Obtener datos de contexto y estado\nconst context = $('Prepare Context').item.json;\nconst stateRow = $('Load Conversation State').item.json;\n\n// Parsear el estado de la DB\nlet state = {\n  greeted: false,\n  slots: {},\n  objective: \"\",\n  last_action: null,\n  attempts_count: 0\n};\n\nif (stateRow && stateRow.state) {\n  try {\n    const parsed = typeof stateRow.state === 'string' \n      ? JSON.parse(stateRow.state) \n      : stateRow.state;\n    \n    // Extraer campos del estado\n    state.greeted = parsed.greeted || false;\n    state.slots = parsed.slots || {};\n    state.objective = parsed.objective || \"\";\n    state.last_action = parsed.last_action || null;\n    state.attempts_count = parsed.attempts_count || 0;\n    \n    console.log('✅ State loaded from DB:', JSON.stringify(state));\n  } catch (e) {\n    console.error('❌ Error parsing state:', e.message);\n  }\n}\n\n// Preparar payload para orchestrator\nreturn {\n  conversation_id: context.conversation_id,\n  vertical: context.vertical,\n  user_input: context.user_text,\n  greeted: state.greeted,\n  slots: state.slots,\n  objective: state.objective,\n  last_action: state.last_action,\n  attempts_count: state.attempts_count\n};"
-        },
-        "type": "n8n-nodes-base.code",
-        "typeVersion": 2,
-        "position": [
-          -1280,
-          944
-        ],
-        "id": "034221fe-9381-4684-9ed3-f18762a82208",
-        "name": "Prepare Orchestrator Payload"
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// Obtener datos de contexto y estado\nconst context = $('Prepare Context').item.json;\nconst stateRow = $('Load Conversation State').item.json;\n\n// Parsear el estado de la DB\nlet state = {\n  greeted: false,\n  slots: {},\n  objective: \"\",\n  last_action: null,\n  attempts_count: 0\n};\n\nif (stateRow && stateRow.state) {\n  try {\n    const parsed = typeof stateRow.state === 'string' \n      ? JSON.parse(stateRow.state) \n      : stateRow.state;\n    \n    // Extraer campos del estado\n    state.greeted = parsed.greeted || false;\n    state.slots = parsed.slots || {};\n    state.objective = parsed.objective || \"\";\n    state.last_action = parsed.last_action || null;\n    state.attempts_count = parsed.attempts_count || 0;\n    \n    console.log('✅ State loaded from DB:', JSON.stringify(state));\n  } catch (e) {\n    console.error('❌ Error parsing state:', e.message);\n  }\n}\n\n// Preparar payload para orchestrator\nreturn {\n  conversation_id: context.conversation_id,\n  vertical: context.vertical,\n  user_input: context.user_text,\n  greeted: state.greeted,\n  slots: state.slots,\n  objective: state.objective,\n  last_action: state.last_action,\n  attempts_count: state.attempts_count\n};"
       },
-      {
-        "parameters": {
-          "method": "POST",
-          "url": "http://orchestrator:8005/orchestrator/decide",
-          "sendHeaders": true,
-          "headerParameters": {
-            "parameters": [
-              {
-                "name": "X-Workspace-Id",
-                "value": "={{ $('Prepare Context').item.json.workspace_id }}"
-              }
-            ]
-          },
-          "sendBody": true,
-          "specifyBody": "json",
-          "jsonBody": "={{ $json }}",
-          "options": {}
-        },
-        "type": "n8n-nodes-base.httpRequest",
-        "typeVersion": 4.2,
-        "position": [
-          -1104,
-          944
-        ],
-        "id": "call-orchestrator-http",
-        "name": "Call Orchestrator"
-      },
-      {
-        "parameters": {
-          "conditions": {
-            "options": {
-              "caseSensitive": true,
-              "leftValue": "",
-              "typeValidation": "strict",
-              "version": 1
-            },
-            "conditions": [
-              {
-                "id": "has-tool-calls",
-                "leftValue": "={{ $json.tool_calls && $json.tool_calls.length > 0 }}",
-                "rightValue": true,
-                "operator": {
-                  "type": "boolean",
-                  "operation": "equals"
-                }
-              }
-            ],
-            "combinator": "and"
-          },
-          "options": {}
-        },
-        "type": "n8n-nodes-base.if",
-        "typeVersion": 2,
-        "position": [
-          -448,
-          944
-        ],
-        "id": "dbdd3e16-e667-4253-8064-70e7638fd01e",
-        "name": "Check Tool Calls"
-      },
-      {
-        "parameters": {
-          "options": {}
-        },
-        "type": "n8n-nodes-base.splitInBatches",
-        "typeVersion": 3,
-        "position": [
-          -240,
-          928
-        ],
-        "id": "06d6160b-3e7c-4d85-bb28-60e7d18d0426",
-        "name": "Split Tool Calls"
-      },
-      {
-        "parameters": {
-          "method": "POST",
-          "url": "http://172.19.0.5:8006/actions/execute",
-          "sendBody": true,
-          "specifyBody": "json",
-          "jsonBody": "{\n  \"name\": \"{{ $json.name }}\",\n  \"args\": {{ JSON.stringify($json.arguments) }},\n  \"conversation_id\": \"{{ $('Parse Intent').item.json.conversation_id }}\",\n  \"workspace_id\": \"{{ $('Parse Intent').item.json.workspace_id }}\",\n  \"request_id\": \"{{ $('Parse Intent').item.json.message_id }}-{{ $json.name }}\"\n}",
-          "options": {}
-        },
-        "type": "n8n-nodes-base.httpRequest",
-        "typeVersion": 4.2,
-        "position": [
-          -16,
-          800
-        ],
-        "id": "0cd7922b-c76e-4310-a216-3e5fd0de9ccb",
-        "name": "Execute Action"
-      },
-      {
-        "parameters": {
-          "operation": "executeQuery",
-          "query": "=SELECT pulpo.persist_outbound(\n  '{{ $('Parse Intent').item.json.workspace_id }}'::uuid,\n  '{{ $('Parse Intent').item.json.conversation_id }}'::uuid,\n  '{{ $json.message }}',\n  'text',\n  'actions',\n  '{{ JSON.stringify({action: $('Split Tool Calls').item.json.name, result: $json.data}) }}'::jsonb\n) AS message_id;",
-          "options": {}
-        },
-        "type": "n8n-nodes-base.postgres",
-        "typeVersion": 2.5,
-        "position": [
-          192,
-          800
-        ],
-        "id": "b148e374-9c8f-40b4-af3d-d997a4bcad17",
-        "name": "Persist Action Result",
-        "credentials": {
-          "postgres": {
-            "id": "Zgv7AWC0K78uVqEk",
-            "name": "Postgres account"
-          }
-        }
-      },
-      {
-        "parameters": {
-          "assignments": {
-            "assignments": [
-              {
-                "id": "response_text",
-                "name": "response_text",
-                "value": "={{ $json.message || 'Acción ejecutada correctamente' }}",
-                "type": "string"
-              },
-              {
-                "id": "response_type",
-                "name": "response_type",
-                "value": "action_result",
-                "type": "string"
-              },
-              {
-                "id": "action_data",
-                "name": "action_data",
-                "value": "={{ $json.data }}",
-                "type": "object"
-              }
-            ]
-          },
-          "options": {}
-        },
-        "type": "n8n-nodes-base.set",
-        "typeVersion": 3.4,
-        "position": [
-          384,
-          800
-        ],
-        "id": "ad70ca93-52d9-4e0e-abe5-12bd3086f968",
-        "name": "Prepare Action Response"
-      },
-      {
-        "parameters": {
-          "jsCode": "const data = $input.first().json;\nconst parseIntent = $('Parse Intent').item.json;\n\n// Preparar metadata como objeto (será stringificado por el nodo SQL)\nconst metadata = {\n  type: data.next_action || 'ai_response',\n  intent: 'orchestrator_response',\n  slots: data.slots || {},\n  objective: data.objective || '',\n  last_action: data.next_action || null\n};\n\nreturn {\n  response_text: data.assistant || 'Error generando respuesta',\n  response_type: data.next_action || 'ai_response',\n  workspace_id: parseIntent.workspace_id,\n  conversation_id: parseIntent.conversation_id,\n  metadata_json: JSON.stringify(metadata),\n  slots: data.slots || {},\n  objective: data.objective || '',\n  last_action: data.next_action || null\n};"
-        },
-        "type": "n8n-nodes-base.code",
-        "typeVersion": 2,
-        "position": [
-          -240,
-          1120
-        ],
-        "id": "95e86e1e-fb0a-4105-b642-2e17e7acead5",
-        "name": "Prepare Response"
-      },
-      {
-        "parameters": {
-          "respondWith": "allIncomingItems",
-          "options": {
-            "responseCode": 200,
-            "responseHeaders": {
-              "entries": [
-                {
-                  "name": "message",
-                  "value": "Mensaje procesado exitosamente"
-                }
-              ]
-            }
-          }
-        },
-        "type": "n8n-nodes-base.respondToWebhook",
-        "typeVersion": 1.1,
-        "position": [
-          640,
-          944
-        ],
-        "id": "b7d904df-2db2-45ca-87ec-b5d2898b5712",
-        "name": "Final Response"
-      },
-      {
-        "parameters": {
-          "method": "POST",
-          "url": "https://api.twilio.com/2010-04-01/Accounts/ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/Messages.json",
-          "authentication": "predefinedCredentialType",
-          "nodeCredentialType": "twilioApi",
-          "sendHeaders": true,
-          "headerParameters": {
-            "parameters": [
-              {
-                "name": "Content-Type",
-                "value": "application/x-www-form-urlencoded"
-              }
-            ]
-          },
-          "sendBody": true,
-          "bodyParameters": {
-            "parameters": [
-              {
-                "name": "To",
-                "value": "={{ 'whatsapp:+' + $('Normalize Input').item.json.user_phone }}"
-              },
-              {
-                "name": "From",
-                "value": "={{ 'whatsapp:' + $('Resolve Channel').item.json.display_phone }}"
-              },
-              {
-                "name": "Body",
-                "value": "={{ $('Prepare Response').item.json.response_text }}"
-              }
-            ]
-          },
-          "options": {}
-        },
-        "type": "n8n-nodes-base.httpRequest",
-        "typeVersion": 4.2,
-        "position": [
-          432,
-          1120
-        ],
-        "id": "1575ff81-cf40-4fd3-937c-2163c251f697",
-        "name": "Send Twilio",
-        "credentials": {
-          "twilioApi": {
-            "id": "STjKxgq55vOri0dm",
-            "name": "Twilio account"
-          }
-        }
-      },
-      {
-        "parameters": {
-          "operation": "executeQuery",
-          "query": "SELECT 'flow_updated' AS flow_update;",
-          "options": {}
-        },
-        "type": "n8n-nodes-base.postgres",
-        "typeVersion": 2.5,
-        "position": [
-          192,
-          1120
-        ],
-        "id": "ab7c5db8-c3ad-4aaf-977b-edaa856a1ec8",
-        "name": "Update Flow",
-        "credentials": {
-          "postgres": {
-            "id": "Zgv7AWC0K78uVqEk",
-            "name": "Postgres account"
-          }
-        }
-      },
-      {
-        "parameters": {
-          "method": "POST",
-          "url": "http://orchestrator:8005/orchestrator/persist_message",
-          "sendBody": true,
-          "specifyBody": "json",
-          "jsonBody": "={{ {\n  \"workspace_id\": $('Prepare Response').item.json.workspace_id,\n  \"conversation_id\": $('Prepare Response').item.json.conversation_id,\n  \"message_text\": $('Prepare Response').item.json.response_text,\n  \"metadata\": {\n    \"type\": $('Prepare Response').item.json.response_type,\n    \"intent\": \"orchestrator_response\",\n    \"slots\": $('Prepare Response').item.json.slots,\n    \"objective\": $('Prepare Response').item.json.objective,\n    \"last_action\": $('Prepare Response').item.json.last_action\n  }\n} }}",
-          "options": {}
-        },
-        "type": "n8n-nodes-base.httpRequest",
-        "typeVersion": 4.2,
-        "position": [
-          -16,
-          1120
-        ],
-        "id": "8cacb3f7-d700-4016-8f57-b43dff0e3b2e",
-        "name": "Persist Response"
-      },
-      {
-        "parameters": {
-          "jsCode": "// Parsear respuesta del Orchestrator Service\nconst orchestratorResponse = $input.first().json;\n\n// Extraer datos del contexto\nconst contextData = $('Prepare Context').item.json;\n\n// Log para debug\nconsole.log('Context Data:', JSON.stringify(contextData));\nconsole.log('Orchestrator Response:', JSON.stringify(orchestratorResponse));\n\n// Validar que tenemos los datos necesarios\nif (!contextData.workspace_id || !contextData.conversation_id) {\n  throw new Error(`Missing context data: workspace_id=${contextData.workspace_id}, conversation_id=${contextData.conversation_id}`);\n}\n\n// Construir respuesta unificada\nreturn {\n  // Datos del orchestrator\n  assistant: orchestratorResponse.assistant || 'Hola! ¿En qué puedo ayudarte?',\n  next_action: orchestratorResponse.next_action || 'answer',\n  tool_calls: orchestratorResponse.tool_calls || [],\n  slots: orchestratorResponse.slots || {},\n  objective: orchestratorResponse.objective || '',\n  end: orchestratorResponse.end || false,\n  \n  // Datos del contexto (validados)\n  workspace_id: contextData.workspace_id,\n  conversation_id: contextData.conversation_id,\n  message_id: contextData.message_id,\n  vertical: contextData.vertical || 'gastronomia',\n  user_text: contextData.user_text || '',\n  \n  // Para compatibilidad con el flujo existente\n  intent: 'orchestrator_response',\n  confidence: 1.0,\n  requires_handoff: orchestratorResponse.next_action === 'handoff'\n};"
-        },
-        "type": "n8n-nodes-base.code",
-        "typeVersion": 2,
-        "position": [
-          -912,
-          944
-        ],
-        "id": "bf2385ca-af74-48c5-bfeb-d8693d82a6fe",
-        "name": "Parse Intent"
-      },
-      {
-        "parameters": {
-          "operation": "executeQuery",
-          "query": "=SELECT pulpo.load_state(\n  '{{ $('Prepare Context').item.json.workspace_id }}'::uuid,\n  '{{ $('Prepare Context').item.json.conversation_id }}'::uuid\n) as state;",
-          "options": {}
-        },
-        "type": "n8n-nodes-base.postgres",
-        "typeVersion": 2.4,
-        "position": [
-          -1280,
-          944
-        ],
-        "id": "23cc2de4-1c6e-4eb8-82c5-87265adae172",
-        "name": "Load Conversation State",
-        "credentials": {
-          "postgres": {
-            "id": "pulpo-db",
-            "name": "Pulpo PostgreSQL"
-          }
-        }
-      },
-      {
-        "parameters": {
-          "jsCode": "// Obtener datos de nodos previos\nconst persistResult = $('Persist Inbound').item.json.result;\nconst workspaceConfig = $('Get Workspace Config').item.json;\nconst normalizedInput = $('Normalize Input').item.json;\n\n// Parsear el JSON que devuelve persist_inbound\nlet persistData;\nif (typeof persistResult === 'string') {\n  persistData = JSON.parse(persistResult);\n} else if (typeof persistResult === 'object') {\n  persistData = persistResult;\n} else {\n  throw new Error('Invalid persist_inbound result format');\n}\n\n// Log para debug\nconsole.log('Persist Data:', JSON.stringify(persistData));\nconsole.log('Workspace Config:', JSON.stringify(workspaceConfig));\n\n// Validar campos requeridos\nif (!persistData.conversation_id) {\n  throw new Error('Missing conversation_id from persist_inbound');\n}\n\nif (!workspaceConfig.workspace_id) {\n  throw new Error('Missing workspace_id from workspace config');\n}\n\n// Retornar contexto preparado\nreturn {\n  workspace_id: workspaceConfig.workspace_id,\n  conversation_id: persistData.conversation_id,\n  message_id: persistData.message_id,\n  vertical: workspaceConfig.vertical || 'gastronomia',\n  user_text: normalizedInput.text || ''\n};"
-        },
-        "type": "n8n-nodes-base.code",
-        "typeVersion": 2,
-        "position": [
-          -896,
-          688
-        ],
-        "id": "ebd4df9f-9130-41fe-9184-7ca05a674fa9",
-        "name": "Prepare Context"
-      },
-      {
-        "parameters": {
-          "operation": "executeQuery",
-          "query": "=SELECT \n  w.id::text AS workspace_id, \n  COALESCE(w.vertical, 'gastronomia')::text AS vertical \nFROM pulpo.workspaces w \nWHERE w.id = '{{ $('Resolve Channel').item.json.ws_id }}'::uuid \nLIMIT 1;",
-          "options": {}
-        },
-        "type": "n8n-nodes-base.postgres",
-        "typeVersion": 2.5,
-        "position": [
-          -1088,
-          688
-        ],
-        "id": "cae972ec-c3a2-4f7c-9fea-2d777c4ee5a8",
-        "name": "Get Workspace Config",
-        "credentials": {
-          "postgres": {
-            "id": "Zgv7AWC0K78uVqEk",
-            "name": "Postgres account"
-          }
-        }
-      },
-      {
-        "parameters": {
-          "operation": "executeQuery",
-          "query": "=SELECT pulpo.persist_inbound(\n  '{{ $('Resolve Channel').item.json.ws_id }}'::uuid,\n  '{{ $('Resolve Channel').item.json.channel_id }}'::uuid,\n  '{{ $('Normalize Input').item.json.user_phone }}',\n  '{{ $('Normalize Input').item.json.wamid }}',\n  '{{ $('Normalize Input').item.json.text }}'\n) AS result;",
-          "options": {}
-        },
-        "type": "n8n-nodes-base.postgres",
-        "typeVersion": 2.5,
-        "position": [
-          -1296,
-          688
-        ],
-        "id": "6ab9e75f-14e1-4d2c-8093-6bb668e69614",
-        "name": "Persist Inbound",
-        "credentials": {
-          "postgres": {
-            "id": "Zgv7AWC0K78uVqEk",
-            "name": "Postgres account"
-          }
-        }
-      },
-      {
-        "parameters": {
-          "conditions": {
-            "options": {
-              "caseSensitive": true,
-              "leftValue": "",
-              "typeValidation": "strict",
-              "version": 1
-            },
-            "conditions": [
-              {
-                "id": "channel-found",
-                "leftValue": "={{ $('Webhook Inbound').item.json.body.Body }}",
-                "rightValue": 1,
-                "operator": {
-                  "type": "string",
-                  "operation": "notEmpty",
-                  "singleValue": true
-                }
-              }
-            ],
-            "combinator": "and"
-          },
-          "options": {}
-        },
-        "type": "n8n-nodes-base.if",
-        "typeVersion": 2,
-        "position": [
-          -688,
-          480
-        ],
-        "id": "065468b5-9dc2-4755-bf49-d14a577cc053",
-        "name": "Check Channel"
-      },
-      {
-        "parameters": {
-          "operation": "executeQuery",
-          "query": "WITH input AS (\n    SELECT regexp_replace($1, '\\D', '', 'g')::text AS to_phone_digits\n  )\n  SELECT\n    c.id          AS channel_id,\n    c.workspace_id AS ws_id,\n    c.display_phone AS display_phone\n  FROM pulpo.channels c, input i\n  WHERE regexp_replace(c.display_phone, '\\D', '', 'g') = i.to_phone_digits\n  LIMIT 1;",
-          "options": {
-            "queryReplacement": "={{ $json.to_phone }}"
-          }
-        },
-        "type": "n8n-nodes-base.postgres",
-        "typeVersion": 2.5,
-        "position": [
-          -896,
-          480
-        ],
-        "id": "b075b4a2-0c4b-4460-a808-552af8485fb8",
-        "name": "Resolve Channel",
-        "credentials": {
-          "postgres": {
-            "id": "Zgv7AWC0K78uVqEk",
-            "name": "Postgres account"
-          }
-        }
-      },
-      {
-        "parameters": {
-          "assignments": {
-            "assignments": [
-              {
-                "id": "user_phone",
-                "name": "user_phone",
-                "value": "={{($json.body?.WaId || $json.WaId || ($json.body?.From || '').split(':').pop()).replace('+','').replace(/\\D/g,'')}}",
-                "type": "string"
-              },
-              {
-                "id": "text",
-                "name": "text",
-                "value": "={{$json.body?.Body || $json.Body || ''}}",
-                "type": "string"
-              },
-              {
-                "id": "wamid",
-                "name": "wamid",
-                "value": "={{$json.body?.SmsSid || $json.SmsSid || 'SM_FALLBACK'}}",
-                "type": "string"
-              },
-              {
-                "id": "to_phone",
-                "name": "to_phone",
-                "value": "={{(($json.body?.To || $json.To) || '').split(':').pop().replace('+','').replace(/\\D/g,'')}}",
-                "type": "string"
-              }
-            ]
-          },
-          "options": {}
-        },
-        "type": "n8n-nodes-base.set",
-        "typeVersion": 3.4,
-        "position": [
-          -1088,
-          480
-        ],
-        "id": "b71f08a0-ef39-4608-a634-900ea12277fe",
-        "name": "Normalize Input"
-      },
-      {
-        "parameters": {
-          "httpMethod": "POST",
-          "path": "pulpo/twilio/wa/inbound",
-          "responseMode": "responseNode",
-          "options": {}
-        },
-        "type": "n8n-nodes-base.webhook",
-        "typeVersion": 2,
-        "position": [
-          -1296,
-          480
-        ],
-        "id": "07796368-2b3f-45b9-a698-a7892dea0ff1",
-        "name": "Webhook Inbound",
-        "webhookId": "8353a880-638a-4f96-9028-6ba375f8f3d3"
-      }
-    ],
-    "connections": {
-      "Check Tool Calls": {
-        "main": [
-          [
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -176,
+        -80
+      ],
+      "id": "64c685a3-1009-4603-9ae5-bb3e09de61d1",
+      "name": "Prepare Orchestrator Payload"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://orchestrator:8000/orchestrator/decide",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
             {
-              "node": "Split Tool Calls",
-              "type": "main",
-              "index": 0
+              "name": "X-Workspace-Id",
+              "value": "={{ $('Prepare Context').item.json.workspace_id }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        -80
+      ],
+      "id": "a885682e-afd0-4599-90da-798accdc3ba6",
+      "name": "Call Orchestrator"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "has-tool-calls",
+              "leftValue": "={{ $json.tool_calls && $json.tool_calls.length > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
             }
           ],
-          [
-            {
-              "node": "Prepare Response",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
+          "combinator": "and"
+        },
+        "options": {}
       },
-      "Split Tool Calls": {
-        "main": [
-          [
-            {
-              "node": "Execute Action",
-              "type": "main",
-              "index": 0
-            }
-          ],
-          [
-            {
-              "node": "Final Response",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        416,
+        -80
+      ],
+      "id": "53cdc827-ad80-436f-9a69-4f7aa2244465",
+      "name": "Check Tool Calls"
+    },
+    {
+      "parameters": {
+        "options": {}
       },
-      "Execute Action": {
-        "main": [
-          [
-            {
-              "node": "Persist Action Result",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        608,
+        -208
+      ],
+      "id": "48158b4a-3800-4645-9279-820eef023139",
+      "name": "Split Tool Calls"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.19.0.5:8006/actions/execute",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"name\": \"{{ $json.name }}\",\n  \"args\": {{ JSON.stringify($json.arguments) }},\n  \"conversation_id\": \"{{ $('Parse Intent').item.json.conversation_id }}\",\n  \"workspace_id\": \"{{ $('Parse Intent').item.json.workspace_id }}\",\n  \"request_id\": \"{{ $('Parse Intent').item.json.message_id }}-{{ $json.name }}\"\n}",
+        "options": {}
       },
-      "Persist Action Result": {
-        "main": [
-          [
-            {
-              "node": "Prepare Action Response",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        832,
+        -336
+      ],
+      "id": "bae95b21-3bca-4830-9bcc-8cec3bbb9748",
+      "name": "Execute Action"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT pulpo.persist_outbound(\n  '{{ $('Parse Intent').item.json.workspace_id }}'::uuid,\n  '{{ $('Parse Intent').item.json.conversation_id }}'::uuid,\n  '{{ $json.message }}',\n  'text',\n  'actions',\n  '{{ JSON.stringify({action: $('Split Tool Calls').item.json.name, result: $json.data}) }}'::jsonb\n) AS message_id;",
+        "options": {}
       },
-      "Prepare Action Response": {
-        "main": [
-          [
-            {
-              "node": "Send Twilio",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Prepare Response": {
-        "main": [
-          [
-            {
-              "node": "Persist Response",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Send Twilio": {
-        "main": [
-          [
-            {
-              "node": "Final Response",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Update Flow": {
-        "main": [
-          [
-            {
-              "node": "Send Twilio",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Persist Response": {
-        "main": [
-          [
-            {
-              "node": "Update Flow",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Parse Intent": {
-        "main": [
-          [
-            {
-              "node": "Check Tool Calls",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Load Conversation State": {
-        "main": [
-          [
-            {
-              "node": "Prepare Orchestrator Payload",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Prepare Orchestrator Payload": {
-        "main": [
-          [
-            {
-              "node": "Call Orchestrator",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Call Orchestrator": {
-        "main": [
-          [
-            {
-              "node": "Parse Intent",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Prepare Context": {
-        "main": [
-          [
-            {
-              "node": "Load Conversation State",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Get Workspace Config": {
-        "main": [
-          [
-            {
-              "node": "Prepare Context",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Persist Inbound": {
-        "main": [
-          [
-            {
-              "node": "Get Workspace Config",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Check Channel": {
-        "main": [
-          [
-            {
-              "node": "Persist Inbound",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Resolve Channel": {
-        "main": [
-          [
-            {
-              "node": "Check Channel",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Normalize Input": {
-        "main": [
-          [
-            {
-              "node": "Resolve Channel",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Webhook Inbound": {
-        "main": [
-          [
-            {
-              "node": "Normalize Input",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        992,
+        -336
+      ],
+      "id": "fbedb7c0-aaf7-4003-85ad-91d0fa9cd9af",
+      "name": "Persist Action Result",
+      "credentials": {
+        "postgres": {
+          "id": "qqrbA6jcpl1dJNQj",
+          "name": "Postgres account"
+        }
       }
     },
-    "pinData": {},
-    "meta": {
-      "templateCredsSetupCompleted": true,
-      "instanceId": "2ebd3a3cabc089945a9937f3def5ae61335a39699387f60b8d332621f5c5681f"
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "response_text",
+              "name": "response_text",
+              "value": "={{ $json.message || 'Acción ejecutada correctamente' }}",
+              "type": "string"
+            },
+            {
+              "id": "response_type",
+              "name": "response_type",
+              "value": "action_result",
+              "type": "string"
+            },
+            {
+              "id": "action_data",
+              "name": "action_data",
+              "value": "={{ $json.data }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1232,
+        -336
+      ],
+      "id": "c3028903-fa6b-4e9b-b218-268b45606e5e",
+      "name": "Prepare Action Response"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst parseIntent = $('Parse Intent').item.json;\n\n// Preparar metadata como objeto (será stringificado por el nodo SQL)\nconst metadata = {\n  type: data.next_action || 'ai_response',\n  intent: 'orchestrator_response',\n  slots: data.slots || {},\n  objective: data.objective || '',\n  last_action: data.next_action || null\n};\n\nreturn {\n  response_text: data.assistant || 'Error generando respuesta',\n  response_type: data.next_action || 'ai_response',\n  workspace_id: parseIntent.workspace_id,\n  conversation_id: parseIntent.conversation_id,\n  metadata_json: JSON.stringify(metadata),\n  slots: data.slots || {},\n  objective: data.objective || '',\n  last_action: data.next_action || null\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        -48
+      ],
+      "id": "46445312-eea1-4044-b8e1-670bf41adf81",
+      "name": "Prepare Response"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "message",
+                "value": "Mensaje procesado exitosamente"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1472,
+        -192
+      ],
+      "id": "15c60526-3888-46cf-87b6-6b33a4e423de",
+      "name": "Final Response"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX/Messages.json",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "twilioApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/x-www-form-urlencoded"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "To",
+              "value": "={{ 'whatsapp:+' + $('Normalize Input').item.json.user_phone }}"
+            },
+            {
+              "name": "From",
+              "value": "={{ 'whatsapp:' + $('Resolve Channel').item.json.display_phone }}"
+            },
+            {
+              "name": "Body",
+              "value": "={{ $('Prepare Response').item.json.response_text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        -48
+      ],
+      "id": "1de8a71f-4593-4cba-8e40-ed4041af1100",
+      "name": "Send Twilio",
+      "credentials": {
+        "twilioApi": {
+          "id": "J1CQHJ3AI0l1a0sL",
+          "name": "Twilio account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT 'flow_updated' AS flow_update;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1008,
+        -48
+      ],
+      "id": "46e989ba-de96-46fe-9e8c-6d4890598866",
+      "name": "Update Flow",
+      "credentials": {
+        "postgres": {
+          "id": "qqrbA6jcpl1dJNQj",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://orchestrator:8000/orchestrator/persist_message",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"workspace_id\": $('Prepare Response').item.json.workspace_id,\n  \"conversation_id\": $('Prepare Response').item.json.conversation_id,\n  \"message_text\": $('Prepare Response').item.json.response_text,\n  \"metadata\": {\n    \"type\": $('Prepare Response').item.json.response_type,\n    \"intent\": \"orchestrator_response\",\n    \"slots\": $('Prepare Response').item.json.slots,\n    \"objective\": $('Prepare Response').item.json.objective,\n    \"last_action\": $('Prepare Response').item.json.last_action\n  }\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        832,
+        -48
+      ],
+      "id": "f2d5623b-e990-4868-bc1e-b864a79fc168",
+      "name": "Persist Response"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parsear respuesta del Orchestrator Service\nconst orchestratorResponse = $input.first().json;\n\n// Extraer datos del contexto\nconst contextData = $('Prepare Context').item.json;\n\n// Log para debug\nconsole.log('Context Data:', JSON.stringify(contextData));\nconsole.log('Orchestrator Response:', JSON.stringify(orchestratorResponse));\n\n// Validar que tenemos los datos necesarios\nif (!contextData.workspace_id || !contextData.conversation_id) {\n  throw new Error(`Missing context data: workspace_id=${contextData.workspace_id}, conversation_id=${contextData.conversation_id}`);\n}\n\n// Construir respuesta unificada\nreturn {\n  // Datos del orchestrator\n  assistant: orchestratorResponse.assistant || 'Hola! ¿En qué puedo ayudarte?',\n  next_action: orchestratorResponse.next_action || 'answer',\n  tool_calls: orchestratorResponse.tool_calls || [],\n  slots: orchestratorResponse.slots || {},\n  objective: orchestratorResponse.objective || '',\n  end: orchestratorResponse.end || false,\n  \n  // Datos del contexto (validados)\n  workspace_id: contextData.workspace_id,\n  conversation_id: contextData.conversation_id,\n  message_id: contextData.message_id,\n  vertical: contextData.vertical,\n  user_text: contextData.user_text || '',\n  \n  // Para compatibilidad con el flujo existente\n  intent: 'orchestrator_response',\n  confidence: 1.0,\n  requires_handoff: orchestratorResponse.next_action === 'handoff'\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        -80
+      ],
+      "id": "4c786ca3-9dc1-4478-9fc4-e1faf42849d0",
+      "name": "Parse Intent"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT pulpo.load_state(\n  '{{ $('Prepare Context').item.json.workspace_id }}'::uuid,\n  '{{ $('Prepare Context').item.json.conversation_id }}'::uuid\n) as state;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        -336,
+        -80
+      ],
+      "id": "24142359-847d-4178-a325-7c2fb37d887d",
+      "name": "Load Conversation State",
+      "credentials": {
+        "postgres": {
+          "id": "qqrbA6jcpl1dJNQj",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Obtener datos de nodos previos\nconst persistResult = $('Persist Inbound').item.json.result;\nconst workspaceConfig = $('Get Workspace Config').item.json;\nconst normalizedInput = $('Normalize Input').item.json;\n\n// Parsear el JSON que devuelve persist_inbound\nlet persistData;\nif (typeof persistResult === 'string') {\n  persistData = JSON.parse(persistResult);\n} else if (typeof persistResult === 'object') {\n  persistData = persistResult;\n} else {\n  throw new Error('Invalid persist_inbound result format');\n}\n\n// Log para debug\nconsole.log('Persist Data:', JSON.stringify(persistData));\nconsole.log('Workspace Config:', JSON.stringify(workspaceConfig));\n\n// Validar campos requeridos\nif (!persistData.conversation_id) {\n  throw new Error('Missing conversation_id from persist_inbound');\n}\n\nif (!workspaceConfig.workspace_id) {\n  throw new Error('Missing workspace_id from workspace config');\n}\n\n// Retornar contexto preparado\nreturn {\n  workspace_id: workspaceConfig.workspace_id,\n  conversation_id: persistData.conversation_id,\n  message_id: persistData.message_id,\n  vertical: workspaceConfig.vertical,\n  user_text: normalizedInput.text || ''\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -320
+      ],
+      "id": "5c62f75b-1879-4913-83a5-737f2440a4ee",
+      "name": "Prepare Context"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT \n  w.id::text AS workspace_id, \n  w.vertical::text AS vertical \nFROM pulpo.workspaces w \nWHERE w.id = '{{ $('Resolve Channel').item.json.ws_id }}'::uuid \nLIMIT 1;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -176,
+        -320
+      ],
+      "id": "60a8e8c1-9399-4b51-a208-60fd66c95fbf",
+      "name": "Get Workspace Config",
+      "credentials": {
+        "postgres": {
+          "id": "qqrbA6jcpl1dJNQj",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT pulpo.persist_inbound(\n  '{{ $('Resolve Channel').item.json.ws_id }}'::uuid,\n  '{{ $('Resolve Channel').item.json.channel_id }}'::uuid,\n  '{{ $('Normalize Input').item.json.user_phone }}',\n  '{{ $('Normalize Input').item.json.wamid }}',\n  '{{ $('Normalize Input').item.json.text }}'\n) AS result;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -336,
+        -320
+      ],
+      "id": "2cd5fdbf-5ae7-40f1-8b9a-26efffaa64c1",
+      "name": "Persist Inbound",
+      "credentials": {
+        "postgres": {
+          "id": "qqrbA6jcpl1dJNQj",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "channel-found",
+              "leftValue": "={{ $('Webhook Inbound').item.json.body.Body }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -672,
+        -80
+      ],
+      "id": "80c5df4c-6ef0-4f08-9605-3599bcdc92f9",
+      "name": "Check Channel"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH input AS (\n    SELECT regexp_replace($1, '\\D', '', 'g')::text AS to_phone_digits\n  )\n  SELECT\n    c.id::text AS channel_id,\n    c.workspace_id::text AS ws_id,\n    c.config->>'display_phone' AS display_phone\n  FROM pulpo.channels c, input i\n  WHERE regexp_replace(c.config->>'display_phone', '\\D', '', 'g') = i.to_phone_digits\n  LIMIT 1;",
+        "options": {
+          "queryReplacement": "={{ $json.to_phone }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -880,
+        -80
+      ],
+      "id": "c638c5e2-3595-4bdd-a1f2-7b3b661f7baa",
+      "name": "Resolve Channel",
+      "credentials": {
+        "postgres": {
+          "id": "qqrbA6jcpl1dJNQj",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "user_phone",
+              "name": "user_phone",
+              "value": "={{($json.body?.WaId || $json.WaId || ($json.body?.From || '').split(':').pop()).replace('+','').replace(/\\D/g,'')}}",
+              "type": "string"
+            },
+            {
+              "id": "text",
+              "name": "text",
+              "value": "={{$json.body?.Body || $json.Body || ''}}",
+              "type": "string"
+            },
+            {
+              "id": "wamid",
+              "name": "wamid",
+              "value": "={{$json.body?.SmsSid || $json.SmsSid || 'SM_FALLBACK'}}",
+              "type": "string"
+            },
+            {
+              "id": "to_phone",
+              "name": "to_phone",
+              "value": "={{(($json.body?.To || $json.To) || '').split(':').pop().replace('+','').replace(/\\D/g,'')}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1072,
+        -80
+      ],
+      "id": "6668927a-7717-4753-9246-f2cab619fb70",
+      "name": "Normalize Input"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pulpo/twilio/wa/inbound",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1280,
+        -80
+      ],
+      "id": "72e514a5-3d39-458d-989b-18b22197da6a",
+      "name": "Webhook Inbound",
+      "webhookId": "8353a880-638a-4f96-9028-6ba375f8f3d3"
     }
+  ],
+  "connections": {
+    "Prepare Orchestrator Payload": {
+      "main": [
+        [
+          {
+            "node": "Call Orchestrator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Orchestrator": {
+      "main": [
+        [
+          {
+            "node": "Parse Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Tool Calls": {
+      "main": [
+        [
+          {
+            "node": "Split Tool Calls",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Tool Calls": {
+      "main": [
+        [
+          {
+            "node": "Execute Action",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Final Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Action": {
+      "main": [
+        [
+          {
+            "node": "Persist Action Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Action Result": {
+      "main": [
+        [
+          {
+            "node": "Prepare Action Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Action Response": {
+      "main": [
+        [
+          {
+            "node": "Send Twilio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Response": {
+      "main": [
+        [
+          {
+            "node": "Persist Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Twilio": {
+      "main": [
+        [
+          {
+            "node": "Final Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Flow": {
+      "main": [
+        [
+          {
+            "node": "Send Twilio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Response": {
+      "main": [
+        [
+          {
+            "node": "Update Flow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Intent": {
+      "main": [
+        [
+          {
+            "node": "Check Tool Calls",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Conversation State": {
+      "main": [
+        [
+          {
+            "node": "Prepare Orchestrator Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Context": {
+      "main": [
+        [
+          {
+            "node": "Load Conversation State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Workspace Config": {
+      "main": [
+        [
+          {
+            "node": "Prepare Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Inbound": {
+      "main": [
+        [
+          {
+            "node": "Get Workspace Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Channel": {
+      "main": [
+        [
+          {
+            "node": "Persist Inbound",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Channel": {
+      "main": [
+        [
+          {
+            "node": "Check Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "Resolve Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Inbound": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8ed9d869e7b54f37a8b3897ff5f68a25b7ecacba1ada07659541e294c8181ef5"
   }
-  
+}

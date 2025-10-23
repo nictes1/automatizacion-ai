@@ -94,3 +94,4 @@ VALUES
  '{"preferred_service": "Corte de Cabello", "preferred_time": "10:00"}',
  '{"total_interactions": 5, "last_service": "Corte de Cabello"}', 75, '["frequent", "punctual"]')
 ON CONFLICT (client_phone, workspace_id) DO NOTHING;
+

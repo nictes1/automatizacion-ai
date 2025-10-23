@@ -11,7 +11,7 @@ tools:
   # READ TOOLS - Consulta de información
   # ==========================================
 
-  - name: "get_services"
+  - name: "get_available_services"
     description: |
       Lista todos los servicios disponibles con sus precios y duraciones.
       Admite filtro opcional por texto (ej: "corte", "color", "manicura").
@@ -19,9 +19,16 @@ tools:
     args_schema:
       type: object
       properties:
+        workspace_id:
+          type: string
+          description: "ID del workspace (requerido por MCP)"
+        category:
+          type: string
+          description: "Filtro de búsqueda opcional por categoría (ej: 'hair', 'nails')"
         q:
           type: string
-          description: "Filtro de búsqueda opcional (nombre del servicio)"
+          description: "Búsqueda por texto en nombre del servicio (opcional)"
+      required: ["workspace_id"]
       additionalProperties: false
     requires_slots: []
     scopes: ["read"]
@@ -30,26 +37,7 @@ tools:
     cost_tokens: 50
     timeout_ms: 3000
 
-  - name: "get_staff"
-    description: |
-      Lista los profesionales disponibles en el negocio.
-      Devuelve nombre, especialidades y disponibilidad general.
-      Úsalo cuando el cliente pregunte por estilistas/profesionales.
-    args_schema:
-      type: object
-      properties:
-        specialty:
-          type: string
-          description: "Filtrar por especialidad (ej: 'coloración')"
-      additionalProperties: false
-    requires_slots: []
-    scopes: ["read"]
-    tier_required: "basic"
-    rate_limit_per_min: 60
-    cost_tokens: 50
-    timeout_ms: 3000
-
-  - name: "get_availability"
+  - name: "check_service_availability"
     description: |
       Consulta disponibilidad de horarios para un servicio específico.
       Requiere: fecha, tipo de servicio y opcionalmente profesional.
@@ -58,10 +46,13 @@ tools:
     args_schema:
       type: object
       properties:
+        workspace_id:
+          type: string
+          description: "ID del workspace (requerido por MCP)"
         service_type:
           type: string
           description: "Nombre del servicio (ej: 'Corte de Cabello')"
-        date:
+        date_str:
           type: string
           format: date
           description: "Fecha en formato YYYY-MM-DD"
@@ -72,7 +63,7 @@ tools:
           type: integer
           minimum: 15
           description: "Duración estimada en minutos (opcional)"
-      required: ["service_type", "date"]
+      required: ["workspace_id", "service_type", "date_str"]
       additionalProperties: false
     requires_slots: ["service_type", "preferred_date"]
     scopes: ["read"]
@@ -81,112 +72,114 @@ tools:
     cost_tokens: 100
     timeout_ms: 5000
 
+  - name: "get_service_packages"
+    description: |
+      Obtiene paquetes especiales o combos de servicios disponibles.
+      Útil cuando el cliente pregunte por paquetes, promociones combinadas o combos.
+    args_schema:
+      type: object
+      properties:
+        workspace_id:
+          type: string
+          description: "ID del workspace (requerido por MCP)"
+      required: ["workspace_id"]
+      additionalProperties: false
+    requires_slots: []
+    scopes: ["read"]
+    tier_required: "basic"
+    rate_limit_per_min: 60
+    cost_tokens: 50
+    timeout_ms: 3000
+
+  - name: "get_active_promotions"
+    description: |
+      Lista las promociones activas vigentes.
+      Úsalo cuando el cliente pregunte por descuentos u ofertas especiales.
+    args_schema:
+      type: object
+      properties:
+        workspace_id:
+          type: string
+          description: "ID del workspace (requerido por MCP)"
+        check_date:
+          type: string
+          format: date
+          description: "Fecha para verificar promociones (opcional, default: hoy)"
+      required: ["workspace_id"]
+      additionalProperties: false
+    requires_slots: []
+    scopes: ["read"]
+    tier_required: "basic"
+    rate_limit_per_min: 60
+    cost_tokens: 50
+    timeout_ms: 3000
+
+  - name: "get_business_hours"
+    description: |
+      Consulta el horario de atención del negocio.
+      Devuelve horarios por día de la semana y días especiales.
+      Úsalo cuando el cliente pregunte por horarios de apertura.
+    args_schema:
+      type: object
+      properties:
+        workspace_id:
+          type: string
+          description: "ID del workspace (requerido por MCP)"
+      required: ["workspace_id"]
+      additionalProperties: false
+    requires_slots: []
+    scopes: ["read"]
+    tier_required: "basic"
+    rate_limit_per_min: 60
+    cost_tokens: 50
+    timeout_ms: 3000
+
   # ==========================================
-  # WRITE TOOLS - Acciones transaccionales
+  # WRITE TOOLS - Acciones de reserva
   # ==========================================
 
   - name: "book_appointment"
     description: |
-      Crea un turno/reserva confirmado en el sistema.
-      CRÍTICO: Validar disponibilidad con get_availability ANTES.
-      Requiere: servicio, fecha, hora, nombre del cliente.
-      Email es opcional pero recomendado para confirmaciones.
+      Confirma y reserva un turno para un servicio específico.
+      Requiere todos los datos del cliente y horario deseado.
+      IMPORTANTE: Llamar solo DESPUÉS de verificar disponibilidad con check_service_availability.
     args_schema:
       type: object
       properties:
+        workspace_id:
+          type: string
+          description: "ID del workspace (requerido por MCP)"
         service_type:
           type: string
-          description: "Nombre exacto del servicio"
+          description: "Nombre del servicio (ej: 'Corte de Cabello')"
         preferred_date:
           type: string
           format: date
-          description: "Fecha en formato YYYY-MM-DD"
+          description: "Fecha deseada en formato YYYY-MM-DD"
         preferred_time:
           type: string
-          pattern: "^([01]?[0-9]|2[0-3]):[0-5][0-9]$"
-          description: "Hora en formato HH:MM (ej: '14:00')"
+          description: "Hora deseada en formato HH:MM"
         client_name:
           type: string
-          minLength: 2
           description: "Nombre completo del cliente"
         client_email:
           type: string
           format: email
-          description: "Email del cliente (opcional pero recomendado)"
+          description: "Email del cliente"
         client_phone:
           type: string
-          pattern: "^\\+?[1-9]\\d{1,14}$"
           description: "Teléfono del cliente (opcional)"
         staff_id:
           type: string
           description: "ID del profesional preferido (opcional)"
         notes:
           type: string
-          maxLength: 500
           description: "Notas adicionales (opcional)"
-      required: ["service_type", "preferred_date", "preferred_time", "client_name"]
+      required: ["workspace_id", "service_type", "preferred_date", "preferred_time", "client_name", "client_email"]
       additionalProperties: false
-    requires_slots: ["service_type", "preferred_date", "preferred_time", "client_name"]
+    requires_slots: ["service_type", "preferred_date", "preferred_time", "client_name", "client_email"]
     scopes: ["write"]
     tier_required: "basic"
     rate_limit_per_min: 10
-    cost_tokens: 200
-    timeout_ms: 10000
-
-  - name: "cancel_appointment"
-    description: |
-      Cancela un turno existente.
-      Requiere: ID del turno o datos para identificarlo.
-      Solo disponible para tier PRO y superior.
-    args_schema:
-      type: object
-      properties:
-        appointment_id:
-          type: string
-          description: "ID del turno a cancelar"
-        client_name:
-          type: string
-          description: "Nombre del cliente (para validación)"
-        client_email:
-          type: string
-          format: email
-          description: "Email del cliente (para validación)"
-        reason:
-          type: string
-          maxLength: 200
-          description: "Motivo de cancelación (opcional)"
-      required: ["appointment_id"]
-      additionalProperties: false
-    requires_slots: []
-    scopes: ["write"]
-    tier_required: "pro"
-    rate_limit_per_min: 5
-    cost_tokens: 150
-    timeout_ms: 5000
-
-  - name: "reschedule_appointment"
-    description: |
-      Modifica fecha/hora de un turno existente.
-      Solo disponible para tier MAX.
-    args_schema:
-      type: object
-      properties:
-        appointment_id:
-          type: string
-          description: "ID del turno a modificar"
-        new_date:
-          type: string
-          format: date
-          description: "Nueva fecha (YYYY-MM-DD)"
-        new_time:
-          type: string
-          pattern: "^([01]?[0-9]|2[0-3]):[0-5][0-9]$"
-          description: "Nueva hora (HH:MM)"
-      required: ["appointment_id", "new_date", "new_time"]
-      additionalProperties: false
-    requires_slots: []
-    scopes: ["write"]
-    tier_required: "max"
-    rate_limit_per_min: 5
     cost_tokens: 200
     timeout_ms: 10000

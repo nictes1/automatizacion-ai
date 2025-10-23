@@ -168,7 +168,8 @@ def get_mcp_client(base_url: str = None) -> MCPClient:
     """
     global _mcp_client
     if _mcp_client is None:
-        url = base_url or MCP_SERVER_URL
+        # Leer MCP_URL dinámicamente en lugar de usar la variable global
+        url = base_url or os.getenv("MCP_URL", "http://localhost:8010")
         _mcp_client = MCPClient(base_url=url)
     return _mcp_client
 

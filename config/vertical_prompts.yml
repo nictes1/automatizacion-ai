@@ -1,0 +1,182 @@
+# Configuración de prompts por vertical para el planner
+# Versión: v1
+
+vertical_configs:
+  servicios:
+    name: "servicios de peluquería"
+    examples:
+      service_extraction:
+        - input: "corte"
+          output: "Corte de Cabello"
+        - input: "coloración"
+          output: "Coloración"
+        - input: "barba"
+          output: "Barba"
+        - input: "corte y barba"
+          output: "Corte de Cabello + Barba"
+      greeting_examples:
+        - user: "hola"
+          tools:
+            - tool: "get_available_services"
+              args: {}
+            - tool: "get_business_hours"
+              args: {}
+        - user: "buenas tardes"
+          tools:
+            - tool: "get_available_services"
+              args: {}
+            - tool: "get_business_hours"
+              args: {}
+        - user: "buenos días"
+          tools:
+            - tool: "get_available_services"
+              args: {}
+            - tool: "get_business_hours"
+              args: {}
+      booking_examples:
+        - user: "quiero turno para corte mañana 3pm, soy Juan, juan@gmail.com"
+          tools:
+            - tool: "check_service_availability"
+              args:
+                service_type: "Corte de Cabello"
+                date_str: "mañana"
+                time_str: "15:00"
+            - tool: "book_appointment"
+              args:
+                service_type: "Corte de Cabello"
+                preferred_date: "mañana"
+                preferred_time: "15:00"
+                client_name: "Juan"
+                client_email: "juan@gmail.com"
+        - user: "quiero corte y barba el viernes a las 15hs"
+          tools:
+            - tool: "check_service_availability"
+              args:
+                service_type: "Corte de Cabello"
+                date_str: "viernes"
+                time_str: "15:00"
+            - tool: "check_service_availability"
+              args:
+                service_type: "Barba"
+                date_str: "viernes"
+                time_str: "15:35"
+      info_examples:
+        - user: "¿qué servicios tienen?"
+          tools:
+            - tool: "get_available_services"
+              args: {}
+        - user: "¿cuánto sale el corte?"
+          tools:
+            - tool: "get_available_services"
+              args: {}
+        - user: "¿qué horarios tienen?"
+          tools:
+            - tool: "get_business_hours"
+              args: {}
+        - user: "¿tienen disponible mañana?"
+          tools:
+            - tool: "check_service_availability"
+              args:
+                date_str: "mañana"
+    slots:
+      service_type: "Servicio deseado (ej: 'Corte de Cabello', 'Coloración', 'Barba')"
+      preferred_date: "Fecha en formato YYYY-MM-DD"
+      preferred_time: "Hora en formato HH:MM"
+      client_name: "Nombre completo del cliente"
+      client_email: "Email del cliente"
+      client_phone: "Teléfono del cliente"
+
+  gastronomia:
+    name: "restaurante"
+    examples:
+      service_extraction:
+        - input: "pizza"
+          output: "Pizza Margherita"
+        - input: "pasta"
+          output: "Pasta Carbonara"
+        - input: "ensalada"
+          output: "Ensalada César"
+      booking_examples:
+        - user: "quiero reservar mesa para 4 personas mañana a las 8pm"
+          tools:
+            - tool: "check_table_availability"
+              args:
+                date: "2025-10-15"
+                time: "20:00"
+                party_size: 4
+            - tool: "reserve_table"
+              args:
+                date: "2025-10-15"
+                time: "20:00"
+                party_size: 4
+                client_name: "pendiente"
+                client_phone: "pendiente"
+        - user: "quiero hacer un pedido: 2 pizzas margherita y 1 ensalada, mi nombre es María y mi teléfono es +5491234567890"
+          tools:
+            - tool: "create_order"
+              args:
+                items:
+                  - name: "Pizza Margherita"
+                    quantity: 2
+                  - name: "Ensalada César"
+                    quantity: 1
+                delivery_method: "delivery"
+                client_name: "María"
+                client_phone: "+5491234567890"
+      info_examples:
+        - user: "¿qué tienen en el menú?"
+          tools:
+            - tool: "get_menu"
+              args: {}
+        - user: "¿hacen delivery?"
+          tools:
+            - tool: "check_delivery_options"
+              args: {}
+    slots:
+      items: "Lista de platos con cantidades"
+      delivery_method: "Método de entrega (delivery, takeout, dine_in)"
+      party_size: "Número de comensales"
+      preferred_date: "Fecha en formato YYYY-MM-DD"
+      preferred_time: "Hora en formato HH:MM"
+      client_name: "Nombre completo del cliente"
+      client_phone: "Teléfono del cliente"
+      delivery_address: "Dirección de entrega"
+
+  inmobiliaria:
+    name: "inmobiliaria"
+    examples:
+      service_extraction:
+        - input: "departamento"
+          output: "Departamento"
+        - input: "casa"
+          output: "Casa"
+        - input: "oficina"
+          output: "Oficina"
+      booking_examples:
+        - user: "quiero ver un departamento de 2 ambientes en Palermo"
+          tools:
+            - tool: "search_properties"
+              args:
+                property_type: "Departamento"
+                bedrooms: 2
+                location: "Palermo"
+            - tool: "schedule_viewing"
+              args:
+                property_id: "pendiente"
+                preferred_date: "2025-10-15"
+                preferred_time: "15:00"
+                client_name: "pendiente"
+                client_phone: "pendiente"
+      info_examples:
+        - user: "¿qué propiedades tienen disponibles?"
+          tools:
+            - tool: "get_available_properties"
+              args: {}
+    slots:
+      property_type: "Tipo de propiedad (Departamento, Casa, Oficina)"
+      bedrooms: "Número de dormitorios"
+      location: "Ubicación/barrio"
+      preferred_date: "Fecha en formato YYYY-MM-DD"
+      preferred_time: "Hora en formato HH:MM"
+      client_name: "Nombre completo del cliente"
+      client_phone: "Teléfono del cliente"

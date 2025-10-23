@@ -165,7 +165,18 @@ class PolicyEngine:
             return scope_result
 
         # 5. Validar requires_slots
-        slots_result = self._validate_required_slots(tool_spec, state.get("slots", {}), manifest.version)
+        # Si el tool ya tiene los args necesarios, no requerir que estén en los slots del snapshot
+        slots_to_check = state.get("slots", {})
+        if tool_spec.requires_slots:
+            # Verificar si los args del tool ya contienen los slots requeridos
+            args_contain_required = all(
+                action.args.get(slot_name) for slot_name in tool_spec.requires_slots
+            )
+            if args_contain_required:
+                # El tool ya tiene todos los datos necesarios en sus args
+                slots_to_check = {**slots_to_check, **action.args}
+        
+        slots_result = self._validate_required_slots(tool_spec, slots_to_check, manifest.version)
         if not slots_result.allowed:
             return slots_result
 

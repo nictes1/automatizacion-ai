@@ -20,7 +20,8 @@ from services.servicios_tools import (
     check_service_availability,
     get_service_packages,
     get_active_promotions,
-    get_business_hours
+    get_business_hours,
+    book_appointment
 )
 
 logging.basicConfig(level=logging.INFO)

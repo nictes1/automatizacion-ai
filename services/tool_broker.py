@@ -315,8 +315,7 @@ def _build_std_headers(
         "X-Tool-Name": tool,
         "X-Tool-Retry-Safe": str(retry_safe).lower(),
         "X-Manifest-Version": manifest_version,
-        "User-Agent": "PulpoAI-ToolBroker/1.0",
-        "Content-Type": "application/json"
+        "User-Agent": "PulpoAI-ToolBroker/1.0"
     }
 
     if extra:
@@ -437,8 +436,7 @@ class ToolBroker:
         conversation_id: str,
         request_id: str,
         tool_spec: Optional[Any] = None,
-        mcp_client: Optional[Any] = None,
-        custom_runners: Optional[Dict[str, Callable]] = None
+        mcp_client: Optional[Any] = None
     ) -> ToolObservation:
         """
         Ejecuta un tool con idempotencia, retry y circuit breaker
@@ -450,8 +448,7 @@ class ToolBroker:
             conversation_id: ID de la conversación
             request_id: Request ID para idempotencia
             tool_spec: ToolSpec (Pydantic) o dict con spec del tool
-            mcp_client: Cliente MCP (opcional, para tools tipo 'mcp')
-            custom_runners: Runners custom por tool (opcional)
+            mcp_client: Cliente MCP para ejecutar tools via Model Context Protocol
 
         Returns:
             ToolObservation con resultado
@@ -508,25 +505,22 @@ class ToolBroker:
 
             for attempt in range(self.max_retries + 1):
                 try:
-                    # Ejecutar según tipo
+                    # Ejecutar según tipo (MCP es el default)
                     if tool_type == "http":
                         result = await self._execute_http_tool(tool, args, tool_spec, workspace_id, conversation_id, request_id, retry_safe)
-                    elif tool_type == "mcp":
+                    elif tool_type == "mcp" or tool_type is None:
+                        # MCP es el tipo por defecto
                         result = await self._execute_mcp_tool(tool, args, mcp_client)
                     else:
-                        # Internal / custom
-                        if custom_runners and tool in custom_runners:
-                            result = await custom_runners[tool](args)
-                        else:
-                            result = RunnerResult(
-                                success=False,
-                                data={},
-                                error=f"Unknown tool type: {tool_type}",
-                                status_code=None
-                            )
+                        result = RunnerResult(
+                            success=False,
+                            data={},
+                            error=f"Unknown tool type: {tool_type}",
+                            status_code=None
+                        )
 
                     # Guardar status_code para clasificación
-                    last_status_code = result.status_code
+                    last_status_code = result.status_code if hasattr(result, 'status_code') else None
 
                     if result.success:
                         # ✅ Éxito
@@ -808,6 +802,10 @@ class ToolBroker:
             elif auth.get("type") == "api_key":
                 headers[auth.get("header", "X-API-Key")] = auth.get("value", "")
 
+        # Content-Type explícito solo para métodos con body
+        if method not in ["GET", "DELETE"]:
+            headers.setdefault("Content-Type", "application/json")
+
         # Timeout granular
         timeout_s = timeout_ms / 1000
         timeout = aiohttp.ClientTimeout(
@@ -848,7 +846,7 @@ class ToolBroker:
                 # Capturar Retry-After header (segundos + fecha)
                 retry_after = _parse_retry_after(response.headers.get("Retry-After"))
 
-                # Guardrails: Tamaño máximo de response
+                # Guardrails: Tamaño máximo de response (Content-Length)
                 cl = response.headers.get("Content-Length")
                 if cl and cl.isdigit():
                     mb = int(cl) / (1024 * 1024)
@@ -857,16 +855,31 @@ class ToolBroker:
                             success=False,
                             data={},
                             error=f"Response too large: {mb:.2f}MB > {self.max_body_mb}MB",
-                            status_code=413
+                            status_code=413,
+                            retry_after=retry_after
                         )
 
-                # Leer response
+                # Leer response acotado (chunked para evitar memory exhaustion)
+                chunked = bytearray()
+                max_bytes = self.max_body_mb * 1024 * 1024
+                async for chunk in response.content.iter_chunked(64 * 1024):
+                    chunked.extend(chunk)
+                    if len(chunked) > max_bytes:
+                        return RunnerResult(
+                            success=False,
+                            data={},
+                            error="Response exceeded size limit",
+                            status_code=413,
+                            retry_after=retry_after
+                        )
+
+                # Intentar parsear JSON
                 try:
-                    data = await response.json()
+                    encoding = response.get_encoding() or "utf-8"
+                    data = json.loads(bytes(chunked).decode(encoding))
                 except Exception:
-                    # No es JSON, leer como texto (truncado)
-                    text = await response.text()
-                    data = {"_raw": text[:10000]}
+                    # No es JSON, devolver raw (truncado)
+                    data = {"_raw": bytes(chunked)[:10000].decode(errors="replace")}
 
                 # Éxito: 2xx
                 if 200 <= status_code < 300:

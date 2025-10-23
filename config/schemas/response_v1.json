@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://pulpoai.com/schemas/response.v1.json",
+  "title": "Response Generator Output Schema v1",
+  "description": "Schema para la salida del Response Generator",
+  "type": "object",
+  "required": ["message", "tone", "next_state"],
+  "properties": {
+    "message": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 480,
+      "description": "Mensaje final para el usuario (máx 480 chars, ~2-3 oraciones)"
+    },
+    "tone": {
+      "type": "string",
+      "enum": ["friendly", "neutral", "professional"],
+      "description": "Tono del mensaje"
+    },
+    "next_state": {
+      "type": "string",
+      "enum": [
+        "INICIO",
+        "SELECCION_SERVICIO",
+        "DISPONIBILIDAD",
+        "CONFIRMACION",
+        "RESERVA_HECHA",
+        "CANCELACION",
+        "ERROR",
+        "DONE"
+      ],
+      "description": "Próximo estado de la FSM"
+    },
+    "quick_replies": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 30
+      },
+      "maxItems": 4,
+      "description": "Respuestas rápidas sugeridas (opcional)"
+    },
+    "requires_human": {
+      "type": "boolean",
+      "default": false,
+      "description": "Si true, escalar a humano"
+    }
+  },
+  "additionalProperties": false
+}
+
+
+
+
+

@@ -11,12 +11,12 @@ SET search_path = public, pulpo;
 -- =====================================================
 
 -- Sample workspace for gastronomy
-INSERT INTO pulpo.workspaces (id, name, plan_tier, vertical, settings_json) VALUES
-  ('550e8400-e29b-41d4-a716-446655440001', 'Restaurante El Buen Sabor', 'agent_pro', 'gastronomia', 
+INSERT INTO pulpo.workspaces (id, name, plan, vertical, business_name, business_calendar_email, settings) VALUES
+  ('550e8400-e29b-41d4-a716-446655440001', 'Restaurante El Buen Sabor', 'premium', 'gastronomia', 'Restaurante El Buen Sabor', NULL,
    '{"twilio_from": "+14155238886", "ollama_model": "llama3.1:8b", "business_hours": "09:00-23:00"}'::jsonb),
-  ('550e8400-e29b-41d4-a716-446655440002', 'Inmobiliaria San Martín', 'agent_premium', 'inmobiliaria',
+  ('550e8400-e29b-41d4-a716-446655440002', 'Inmobiliaria San Martín', 'premium', 'inmobiliaria', 'Inmobiliaria San Martín', NULL,
    '{"twilio_from": "+14155238887", "ollama_model": "llama3.1:8b", "business_hours": "08:00-18:00"}'::jsonb),
-  ('550e8400-e29b-41d4-a716-446655440003', 'Peluquería Estilo', 'agent_basic', 'servicios',
+  ('550e8400-e29b-41d4-a716-446655440003', 'Peluquería Estilo', 'basic', 'servicios', 'Peluquería Estilo', 'nikolastesone@gmail.com',
    '{"twilio_from": "+14155238888", "ollama_model": "llama3.1:8b", "business_hours": "10:00-20:00"}'::jsonb);
 
 -- =====================================================

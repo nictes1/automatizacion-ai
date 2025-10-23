@@ -11,7 +11,7 @@
 -- Habilitar extensiones necesarias
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-CREATE EXTENSION IF NOT EXISTS "vector";
+-- CREATE EXTENSION IF NOT EXISTS "vector";  -- Comentado temporalmente - requiere pgvector
 CREATE EXTENSION IF NOT EXISTS "citext";
 
 -- Crear esquema
@@ -153,7 +153,7 @@ CREATE TABLE pulpo.dialogue_states(
   fsm_state text NOT NULL,
   intent text,
   slots jsonb DEFAULT '{}'::jsonb,
-  next_action text NOT NULL CHECK (next_action IN ('answer','tool_call','handoff','wait')),
+  next_action text NOT NULL CHECK (next_action IN ('greet','slot_fill','retrieve_context','confirm_action','execute_action','answer','ask_human','tool_call','handoff','wait')),
   meta jsonb DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
@@ -222,17 +222,17 @@ CREATE TABLE pulpo.document_chunks(
 
 COMMENT ON TABLE pulpo.document_chunks IS 'Chunks de documentos para búsqueda semántica';
 
--- Document embeddings
-CREATE TABLE pulpo.document_embeddings(
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  chunk_id uuid NOT NULL REFERENCES pulpo.document_chunks(id) ON DELETE CASCADE,
-  embedding vector(768),  -- nomic-embed-text uses 768 dimensions
-  model text NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE(chunk_id)
-);
-
-COMMENT ON TABLE pulpo.document_embeddings IS 'Embeddings vectoriales para RAG semántico';
+-- Document embeddings (COMENTADO - requiere extensión pgvector)
+-- CREATE TABLE pulpo.document_embeddings(
+--   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+--   chunk_id uuid NOT NULL REFERENCES pulpo.document_chunks(id) ON DELETE CASCADE,
+--   embedding vector(768),  -- nomic-embed-text uses 768 dimensions
+--   model text NOT NULL,
+--   created_at timestamptz NOT NULL DEFAULT now(),
+--   UNIQUE(chunk_id)
+-- );
+--
+-- COMMENT ON TABLE pulpo.document_embeddings IS 'Embeddings vectoriales para RAG semántico';
 
 -- =====================================================
 -- BUSINESS CATALOG - STAFF
@@ -738,7 +738,7 @@ CREATE INDEX idx_dialogue_state_history_conversation ON pulpo.dialogue_state_his
 CREATE INDEX idx_documents_workspace ON pulpo.documents(workspace_id);
 CREATE INDEX idx_document_chunks_document ON pulpo.document_chunks(document_id);
 CREATE INDEX idx_document_chunks_workspace ON pulpo.document_chunks(workspace_id);
-CREATE INDEX idx_document_embeddings_embedding ON pulpo.document_embeddings USING ivfflat (embedding vector_cosine_ops);
+-- CREATE INDEX idx_document_embeddings_embedding ON pulpo.document_embeddings USING ivfflat (embedding vector_cosine_ops);  -- Requiere pgvector
 
 -- Staff & Services indexes
 CREATE INDEX idx_staff_workspace ON pulpo.staff(workspace_id);

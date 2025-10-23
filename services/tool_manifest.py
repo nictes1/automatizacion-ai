@@ -166,3 +166,7 @@ def get_manifest(workspace_id: str, vertical: str) -> ToolManifest:
 def reload_manifests():
     """Recarga todos los manifests (útil para development)"""
     _loader.clear_cache()
+
+
+# Alias para backward compatibility
+load_tool_manifest = lambda vertical: _loader.load_from_yaml(vertical)

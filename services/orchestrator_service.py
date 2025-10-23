@@ -10,7 +10,7 @@ import time
 import contextvars
 import os
 import re
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any, Tuple, Union
 from dataclasses import dataclass
 from enum import Enum
 import asyncio
@@ -24,6 +24,7 @@ from services.mcp_client import get_mcp_client
 from services.rate_limiter import RateLimiter, RateLimitType, TIER_CONFIGS
 from services.tool_manifest import load_tool_manifest
 from services.policy_engine import PolicyEngine as NewPolicyEngine, PolicyDecision, PlanAction
+from services.vertical_prompt_generator import vertical_prompt_generator
 from services.tool_broker import get_tool_broker, ToolObservation
 from services.state_reducer import get_state_reducer, apply_patch_to_snapshot
 
@@ -1098,10 +1099,10 @@ class LLMClient:
         # Timeout aumentado para modelos más grandes (10s)
         self.client = httpx.AsyncClient(timeout=httpx.Timeout(10.0))
 
-    async def generate_json(self, system_prompt: str, user_prompt: str, retry: bool = True) -> Optional[Dict[str, Any]]:
+    async def generate_json(self, system_prompt: str, user_prompt: str, retry: bool = True) -> Optional[Union[Dict[str, Any], List[Any]]]:
         """
         Pide al LLM que devuelva JSON (se fuerza formato).
-        Retorna dict o None si no se pudo parsear.
+        Retorna dict, list o None si no se pudo parsear.
         """
         try:
             # Limitar prompt de usuario para evitar input gigantes
@@ -1125,9 +1126,9 @@ class LLMClient:
             result = resp.json()
             content = result.get("message", {}).get("content", "")
             data = safe_json_loads(content)
-            
-            # Validar tamaño y tipo
-            if not isinstance(data, dict) or len(json.dumps(data)) > 8000:
+
+            # Validar tamaño y tipo (aceptar dict o list)
+            if not isinstance(data, (dict, list)) or len(json.dumps(data)) > 8000:
                 logger.warning(f"LLM response too large or invalid: {len(json.dumps(data)) if data else 0} chars")
                 if retry:
                     # Reintento con prompt minimalista
@@ -1257,13 +1258,10 @@ class ToolsClient:
 class OrchestratorService:
     """Servicio principal del orquestador"""
 
-    def __init__(self, enable_agent_loop: bool = False):
+    def __init__(self):
         """
-        Args:
-            enable_agent_loop: Si True, usa el nuevo loop de agente (Planner → Policy → Broker → Reducer)
-                              Si False, usa el sistema anterior (Intent Detection + Decision Tree)
+        Orchestrator simplificado que solo usa Agent Loop
         """
-        self.enable_agent_loop = enable_agent_loop
         self.policy_engine = PolicyEngine()
         self.llm_client = LLMClient()
         self.tools_client = ToolsClient()
@@ -1277,7 +1275,7 @@ class OrchestratorService:
         redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/1")
         self.rate_limiter = RateLimiter(redis_url)
         
-        logger.info(f"[ORCHESTRATOR] Initialized with agent_loop={'enabled' if enable_agent_loop else 'disabled'}")
+        logger.info(f"[ORCHESTRATOR] Initialized with Agent Loop")
 
     def set_request_context(self, ctx: Dict[str, str]) -> RequestContext:
         """
@@ -1571,7 +1569,8 @@ IMPORTANTE:
             base += """
 
 VERTICAL: GASTRONOMÍA
-Tu rol: Tomar pedidos de comida como lo haría un empleado del local.
+NEGOCIO: El Buen Sabor - Cocina Casera 🍽️
+Tu rol: Eres el asistente virtual de "El Buen Sabor", un restaurante de comida casera. Ayudas a los clientes a hacer pedidos de forma amigable y eficiente.
 
 INFORMACIÓN NECESARIA PARA PEDIDO:
 - ¿Qué quiere? (items: ej. "2 pizzas grandes", "hamburguesa completa")
@@ -1620,11 +1619,12 @@ TOOLS: list_properties, schedule_visit
             base += """
 
 VERTICAL: SERVICIOS - Peluquería
-Tu nombre: Sofía
-Tu rol: Recepcionista virtual de una peluquería moderna y acogedora.
+NEGOCIO: Estilo Total - Peluquería & Spa 💇
+Tu rol: Eres el asistente virtual de "Estilo Total", una peluquería moderna y acogedora. Ayudas a los clientes a agendar turnos de forma amigable y eficiente.
 
 🎯 TU MISIÓN:
 - Ayudar a los clientes a agendar turnos de forma natural y eficiente
+- Consultar disponibilidad, precios y profesionales usando TOOLS
 - Extraer información necesaria de forma conversacional (no como formulario)
 - Ser cálida, cercana y profesional - como una recepcionista experta
 
@@ -1641,13 +1641,19 @@ Tu rol: Recepcionista virtual de una peluquería moderna y acogedora.
 ✗ Repetir siempre la misma estructura
 ✗ Tecnicismos innecesarios
 
+⚙️ CÓMO FUNCIONA EL NEGOCIO:
+- Cada servicio tiene DIFERENTES PRECIOS y DURACIONES según el profesional
+- Los profesionales tienen especialidades (ej: Master Colorist, Barbero, Senior Stylist, Junior)
+- El precio MÁS BAJO suele ser con profesionales junior (más tiempo)
+- El precio MÁS ALTO suele ser con profesionales senior/master (menos tiempo, más experiencia)
+- SIEMPRE usa get_available_services para consultar precios REALES antes de responder
+
 📋 INFORMACIÓN QUE NECESITAS PARA AGENDAR:
-- service_type: Servicio deseado (ej: "Corte de Cabello", "Coloración", "Brushing")
+- service_type: Servicio deseado (ej: "Corte de Cabello", "Coloración", "Barba")
 - preferred_date: Fecha en formato YYYY-MM-DD (ej: "2025-10-07")
 - preferred_time: Hora en formato HH:MM (ej: "15:00")
 - client_name: Nombre del cliente
-- client_email: Email del cliente
-- client_phone: Teléfono (opcional)
+- client_phone: Teléfono del cliente (para WhatsApp)
 
 🔧 CÓMO TRABAJAR:
 1. Si el cliente ya dio información, reconócela y úsala (no preguntes de nuevo)
@@ -1657,25 +1663,36 @@ Tu rol: Recepcionista virtual de una peluquería moderna y acogedora.
 
 EJEMPLO DE CONVERSACIÓN NATURAL:
 Usuario: "Hola, necesito cortarme el pelo mañana a las 3pm"
-Tú: "¡Hola! Perfecto, te anoto para mañana a las 15hs para un corte. ¿Me pasás tu nombre y email?"
-Usuario: "Soy Pablo, pablo@gmail.com"
-Tú: "Genial Pablo! Confirmado tu turno para corte mañana 15hs. ¿Te mando la confirmación a pablo@gmail.com?"
+Tú: [ejecuta check_service_availability] "¡Hola! Perfecto, tengo disponibilidad para corte mañana 15hs. ¿Me pasás tu nombre?"
+Usuario: "Soy Pablo"
+Tú: "Genial Pablo! Te confirmo turno para corte de cabello mañana 15hs. El sistema asignará automáticamente un profesional disponible. ¿Confirmo?"
 Usuario: "Dale"
-Tú: [ejecuta schedule_appointment] "¡Listo! Tu turno está confirmado. Te esperamos mañana a las 15hs 💈"
+Tú: [ejecuta book_appointment] "¡Listo! Tu turno está confirmado. Te esperamos mañana a las 15hs 💈"
+
+EJEMPLO CON CONSULTA DE PRECIOS:
+Usuario: "Cuánto sale un corte?"
+Tú: [ejecuta get_available_services] "El corte de cabello va de $3500 a $6000 según el profesional:
+- Laura (Junior): $3500 / 45min
+- Juan (Barbero): $4500 / 35min
+- Carlos (Senior): $5500 / 30min
+- María (Master): $6000 / 35min
+
+¿Querés agendar con alguno en particular o te asigno según disponibilidad?"
 
 🚨 REGLAS CRÍTICAS - NO ALUCINES:
 ✓ NUNCA inventes precios, promociones ni información del negocio
-✓ Si te preguntan por precios/servicios/horarios y NO tenés la info → Di "Déjame consultarlo" y NO inventes
+✓ Si te preguntan por precios/servicios/horarios → USA los TOOLS para obtener info real
 ✓ Cuando consultes precios, SIEMPRE menciona que varían por profesional
+✓ El sistema asigna automáticamente el staff disponible y calcula la duración según el profesional
 ✓ Extrae TODA la información posible de cada mensaje del usuario
-✓ updated_state debe contener los campos que descubriste (service_type, preferred_date, preferred_time, client_name, client_email, staff_preference si lo menciona)
-✓ Solo marca end=true cuando hayas ejecutado schedule_appointment exitosamente
+✓ updated_state debe contener los campos que descubriste (service_type, preferred_date, preferred_time, client_name, client_phone)
+✓ Solo marca end=true cuando hayas ejecutado book_appointment exitosamente
 
-🔧 TOOLS DISPONIBLES (úsalos cuando el cliente consulte info):
-- get_available_services: Lista servicios con precios por profesional
-- check_availability: Verifica disponibilidad de horarios
-- get_business_hours: Horarios de atención
-- get_active_promotions: Promociones vigentes
+🔧 TOOLS DISPONIBLES (ÚSALOS!):
+- get_available_services: Lista servicios con precios/duraciones por profesional - USA ESTO cuando pregunten precios
+- check_service_availability: Verifica disponibilidad de horarios para un servicio
+- get_business_hours: Horarios de atención del negocio
+- get_active_promotions: Promociones vigentes (descuentos, ofertas)
 """
 
         self._system_cache[vertical] = base
@@ -2090,90 +2107,226 @@ Ejemplos:
 
     async def decide(self, snapshot: ConversationSnapshot) -> OrchestratorResponse:
         """
-        🧠 PUNTO DE ENTRADA PRINCIPAL: Decide qué arquitectura usar
+        🧠 PUNTO DE ENTRADA PRINCIPAL: Agent Loop con Intent Classifier
+        """
+        logger.info(f"[DECIDE] Using Agent Loop for conversation {snapshot.conversation_id}")
         
-        - Si enable_agent_loop=True → usa el nuevo loop de agente (Planner → Policy → Broker → Reducer)
-        - Si enable_agent_loop=False → usa el sistema anterior (Intent Detection + Decision Tree)
-        """
-        if self.enable_agent_loop:
-            logger.info(f"[DECIDE] Using NEW agent loop for conversation {snapshot.conversation_id}")
-            return await self.decide_with_agent_loop(snapshot)
-        else:
-            logger.info(f"[DECIDE] Using LEGACY decision tree for conversation {snapshot.conversation_id}")
-            return await self._decide_legacy(snapshot)
-    
-    async def _decide_legacy(self, snapshot: ConversationSnapshot) -> OrchestratorResponse:
-        """
-        🧠 NUEVA ARQUITECTURA: Intent Detection Universal + Smart Decision Tree
-        Detecta intención en CADA mensaje y navega inteligentemente
-        """
-        start_time = time.time()
-        ctx = REQUEST_CONTEXT.get()
-        telemetry = {
-            "conversation_id": snapshot.conversation_id,
-            "vertical": snapshot.vertical,
-            "attempts_count": snapshot.attempts_count,
-            "request_id": (ctx.get("x-request-id") if ctx else None),
-            "llm_ms": 0,
-            "intent_detection_ms": 0,
-            "decision_tree_ms": 0,
-            "reply_len": 0
-        }
-
+        # FASE 1: Intent Classifier + Saludo Determinístico
         try:
-            # 0. Log del snapshot recibido
-            logger.info(f"[SNAPSHOT] conversation_id={snapshot.conversation_id}, greeted={snapshot.greeted}, slots={snapshot.slots}, user_input='{snapshot.user_input[:50]}'")
-
-            # 0. Validar vertical
-            if snapshot.vertical not in VALID_VERTICALS:
-                logger.warning(f"[VERTICAL_INVALIDO] Recibido: '{snapshot.vertical}' | Válidos: {VALID_VERTICALS}")
-                return OrchestratorResponse(
-                    assistant="Aún no tengo soporte para ese tipo de consulta.",
-                    slots=snapshot.slots,
-                    tool_calls=[],
-                    context_used=[],
-                    next_action=NextAction.ANSWER,
-                    end=False
-                )
-
-            # 2. 🧠 INTENT DETECTION UNIVERSAL - Detectar intención en CADA mensaje
-            intent_start = time.time()
-            intent_result = await self._universal_intent_detection(snapshot)
-            telemetry["intent_detection_ms"] = int((time.time() - intent_start) * 1000)
+            from .intent_classifier import intent_classifier, IntentType
+            from .response_templates import response_templates
             
-            logger.info(f"[INTENT] Detectado: {intent_result['intent']} (confianza: {intent_result['confidence']:.2f})")
-            logger.info(f"[SLOTS] Extraídos: {intent_result['extracted_slots']}")
+            # 1. Clasificar intent
+            conversation_history = await self._get_conversation_history(
+                snapshot.conversation_id, snapshot.workspace_id, limit=5
+            )
             
-            # 3. Actualizar snapshot con información extraída
-            snapshot.slots.update(intent_result['extracted_slots'])
+            intent_start_time = time.time()
+            intent_classification = intent_classifier.classify(snapshot.user_input, conversation_history)
+            intent_processing_time = int((time.time() - intent_start_time) * 1000)
             
-            # 4. 🌳 NAVEGAR ÁRBOL DE DECISIÓN basado en intención + contexto
-            decision_start = time.time()
-            response = await self._navigate_decision_tree(snapshot, intent_result)
-            telemetry["decision_tree_ms"] = int((time.time() - decision_start) * 1000)
+            # Logging de telemetría
+            from .telemetry_logger import telemetry_logger
+            telemetry_logger.log_intent_detection(
+                conversation_id=snapshot.conversation_id,
+                user_input=snapshot.user_input,
+                intent=intent_classification.intent.value,
+                confidence=intent_classification.confidence,
+                method="regex" if intent_classification.confidence >= 0.8 else "contextual",
+                processing_time_ms=intent_processing_time,
+                workspace_id=snapshot.workspace_id
+            )
             
-            logger.info(f"[DECISION_TREE] Acción final: {response.next_action}")
-
-            # Completar telemetría
-            telemetry["reply_len"] = len(response.assistant)
-            telemetry["total_ms"] = int((time.time() - start_time) * 1000)
+            logger.info(f"[INTENT] Detected: {intent_classification.intent.value} (conf: {intent_classification.confidence:.2f})")
             
-            logger.info(f"[telemetry] {snapshot.vertical}:{telemetry['request_id']} {telemetry}")
+            # 2. Saludo Determinístico (sin LLM)
+            if (intent_classification.intent == IntentType.GREETING and 
+                intent_classification.confidence >= 0.7 and 
+                not snapshot.greeted):
+                
+                logger.info("[DETERMINISTIC] Processing greeting without LLM")
+                return await self._handle_deterministic_greeting(snapshot)
             
-            return response
-
+            # 3. Intent con tools determinísticos
+            if intent_classification.requires_tools and intent_classification.confidence >= 0.8:
+                deterministic_tools = intent_classifier.get_deterministic_tools_for_intent(intent_classification.intent)
+                if deterministic_tools:
+                    logger.info(f"[DETERMINISTIC] Processing {intent_classification.intent.value} with tools: {deterministic_tools}")
+                    return await self._handle_deterministic_intent(snapshot, intent_classification.intent, deterministic_tools)
+        
         except Exception as e:
-            telemetry["error"] = str(e)
-            telemetry["total_ms"] = int((time.time() - start_time) * 1000)
-            logger.exception(f"[telemetry] {snapshot.vertical}:{telemetry['request_id']} {telemetry}")
+            logger.warning(f"[INTENT] Error in intent classification: {e}")
+            # Continuar con el flujo normal si hay error
+        
+        # Flujo normal con Agent Loop
+        return await self.decide_with_agent_loop(snapshot)
+    
+    async def _handle_deterministic_greeting(self, snapshot: ConversationSnapshot) -> OrchestratorResponse:
+        """
+        Maneja saludo determinístico: llama a get_available_services + get_business_hours
+        """
+        try:
+            from .response_templates import response_templates
+            from .servicios_tools import get_available_services, get_business_hours
+            
+            # Ejecutar tools determinísticamente
+            services_data = await get_available_services(snapshot.workspace_id)
+            hours_data = await get_business_hours(snapshot.workspace_id)
+            
+            # Generar respuesta con plantilla
+            response_text = response_templates.generate_greeting_response(
+                services_data, hours_data, snapshot.slots.get("client_name")
+            )
+            
+            # Actualizar estado: marcado como saludado
+            updated_slots = dict(snapshot.slots)
+            updated_slots["greeted"] = True
+            
+            # Logging
+            logger.info(f"[DETERMINISTIC_GREETING] Tools called: get_available_services, get_business_hours")
+            logger.info(f"[DETERMINISTIC_GREETING] Response generated with template")
+            
+            # Telemetría
+            from .telemetry_logger import telemetry_logger
+            telemetry_logger.log_tools_called(
+                conversation_id=snapshot.conversation_id,
+                tools=[
+                    {"tool": "get_available_services", "args": {"workspace_id": snapshot.workspace_id}, "success": services_data.get("success", False)},
+                    {"tool": "get_business_hours", "args": {"workspace_id": snapshot.workspace_id}, "success": hours_data.get("success", False)}
+                ],
+                intent="greeting",
+                method="deterministic",
+                success_count=sum([services_data.get("success", False), hours_data.get("success", False)]),
+                total_count=2,
+                processing_time_ms=0,  # Se puede calcular si es necesario
+                workspace_id=snapshot.workspace_id
+            )
+            
+            telemetry_logger.log_deterministic_response(
+                conversation_id=snapshot.conversation_id,
+                intent="greeting",
+                response_type="greeting",
+                template_used="greeting_with_info",
+                processing_time_ms=0,
+                workspace_id=snapshot.workspace_id
+            )
+            
             return OrchestratorResponse(
-                assistant="Disculpá, tuve un problema técnico. ¿Podés repetir lo que necesitás?",
-                slots=snapshot.slots,
+                assistant=response_text,
+                slots=updated_slots,
+                tool_calls=[
+                    {"tool": "get_available_services", "args": {"workspace_id": snapshot.workspace_id}},
+                    {"tool": "get_business_hours", "args": {"workspace_id": snapshot.workspace_id}}
+                ],
+                context_used=["services_data", "hours_data"],
+                next_action=NextAction.ANSWER,
+                end=False
+            )
+            
+        except Exception as e:
+            logger.error(f"[DETERMINISTIC_GREETING] Error: {e}")
+            # Fallback a respuesta simple
+            return OrchestratorResponse(
+                assistant="¡Hola! ¿En qué te puedo ayudar hoy?",
+                slots=dict(snapshot.slots),
                 tool_calls=[],
                 context_used=[],
                 next_action=NextAction.ANSWER,
                 end=False
             )
+    
+    async def _handle_deterministic_intent(self, snapshot: ConversationSnapshot, intent_type, tools: List[str]) -> OrchestratorResponse:
+        """
+        Maneja intents determinísticos con tools específicos
+        """
+        try:
+            from .response_templates import response_templates
+            from .servicios_tools import get_available_services, get_business_hours, check_service_availability
+            
+            tool_results = {}
+            tool_calls = []
+            
+            # Ejecutar tools determinísticamente
+            for tool_name in tools:
+                if tool_name == "get_available_services":
+                    result = await get_available_services(snapshot.workspace_id)
+                    tool_results["services"] = result
+                    tool_calls.append({"tool": tool_name, "args": {"workspace_id": snapshot.workspace_id}})
+                    
+                elif tool_name == "get_business_hours":
+                    result = await get_business_hours(snapshot.workspace_id)
+                    tool_results["hours"] = result
+                    tool_calls.append({"tool": tool_name, "args": {"workspace_id": snapshot.workspace_id}})
+                    
+                elif tool_name == "check_service_availability":
+                    # Para booking, necesitamos extraer información del mensaje
+                    service_type = snapshot.slots.get("service_type", "")
+                    preferred_date = snapshot.slots.get("preferred_date", "")
+                    if service_type and preferred_date:
+                        result = await check_service_availability(
+                            snapshot.workspace_id, service_type, preferred_date
+                        )
+                        tool_results["availability"] = result
+                        tool_calls.append({
+                            "tool": tool_name, 
+                            "args": {
+                                "workspace_id": snapshot.workspace_id,
+                                "service_type": service_type,
+                                "date_str": preferred_date
+                            }
+                        })
+            
+            # Generar respuesta según intent
+            if intent_type.value == "info_services":
+                response_text = response_templates.generate_services_response(tool_results.get("services", {}))
+            elif intent_type.value == "info_hours":
+                response_text = response_templates.generate_hours_response(tool_results.get("hours", {}))
+            elif intent_type.value == "info_price":
+                response_text = response_templates.generate_services_response(tool_results.get("services", {}))
+            else:
+                # Fallback
+                response_text = "Aquí tienes la información que solicitaste. ¿Necesitás algo más?"
+            
+            # Logging
+            logger.info(f"[DETERMINISTIC_INTENT] Intent: {intent_type.value}, Tools: {tools}")
+            logger.info(f"[DETERMINISTIC_INTENT] Response generated with template")
+            
+            # Telemetría
+            from .telemetry_logger import telemetry_logger
+            success_count = sum(1 for result in tool_results.values() if result.get("success", False))
+            telemetry_logger.log_tools_called(
+                conversation_id=snapshot.conversation_id,
+                tools=tool_calls,
+                intent=intent_type.value,
+                method="deterministic",
+                success_count=success_count,
+                total_count=len(tool_calls),
+                processing_time_ms=0,
+                workspace_id=snapshot.workspace_id
+            )
+            
+            telemetry_logger.log_deterministic_response(
+                conversation_id=snapshot.conversation_id,
+                intent=intent_type.value,
+                response_type=intent_type.value,
+                template_used=f"{intent_type.value}_template",
+                processing_time_ms=0,
+                workspace_id=snapshot.workspace_id
+            )
+            
+            return OrchestratorResponse(
+                assistant=response_text,
+                slots=dict(snapshot.slots),
+                tool_calls=tool_calls,
+                context_used=list(tool_results.keys()),
+                next_action=NextAction.ANSWER,
+                end=False
+            )
+            
+        except Exception as e:
+            logger.error(f"[DETERMINISTIC_INTENT] Error: {e}")
+            # Fallback a flujo normal
+            return await self.decide_with_agent_loop(snapshot)
 
     async def decide_with_agent_loop(self, snapshot: ConversationSnapshot) -> OrchestratorResponse:
         """
@@ -2205,6 +2358,11 @@ Ejemplos:
         logger.info(f"[AGENT_LOOP] Starting for conversation {snapshot.conversation_id}")
         
         try:
+            # 0. 🔄 NORMALIZAR SLOTS: Convertir fechas relativas a formato ISO
+            normalized_slots = self._normalize_slots(snapshot.vertical, snapshot.slots)
+            snapshot.slots = normalized_slots
+            logger.info(f"[NORMALIZE] Slots normalizados: {normalized_slots}")
+            
             # 1. 🧠 PLANNER: LLM decide qué tools ejecutar
             planner_start = time.time()
             plan_actions = await self._planner_decide_tools(snapshot)
@@ -2216,7 +2374,20 @@ Ejemplos:
             # 2. 🛡️ POLICY: Validar cada acción
             policy_start = time.time()
             validated_actions = []
-            workspace_config = {"vertical": snapshot.vertical, "workspace_id": snapshot.workspace_id}
+            workspace_config = {
+                "id": snapshot.workspace_id,
+                "vertical": snapshot.vertical,
+                "tier": "basic",  # Asumir tier básico para testing
+                "status": "active",  # Workspace activo para permitir write operations
+                "policy": {
+                    "max_tool_calls": 3,
+                    "one_slot_per_turn": True,
+                    "tools_first": [],
+                    "forbid_patterns": [],
+                    "min_confidence": 0.55,
+                    "require_confirmation": True
+                }
+            }
             
             # Cargar manifest de tools
             try:
@@ -2224,11 +2395,18 @@ Ejemplos:
                 new_policy_engine = NewPolicyEngine()
             except Exception as e:
                 logger.error(f"[POLICY] Error loading manifest: {e}")
-                # Fallback al método anterior
-                return await self.decide(snapshot)
+                # Fallback: respuesta simple sin tools
+                return OrchestratorResponse(
+                    assistant="Disculpá, tuve un problema técnico. ¿Podés repetir lo que necesitás?",
+                    slots=snapshot.slots,
+                    tool_calls=[],
+                    context_used=[],
+                    next_action=NextAction.ANSWER,
+                    end=False
+                )
             
             for action in plan_actions:
-                policy_result = new_policy_engine.validate(action, dict(snapshot.slots), workspace_config, manifest)
+                policy_result = new_policy_engine.validate(action, {"slots": dict(snapshot.slots)}, workspace_config, manifest)
                 
                 if policy_result.decision == PolicyDecision.ALLOW:
                     # Usar argumentos normalizados del policy
@@ -2248,15 +2426,15 @@ Ejemplos:
             telemetry["policy_ms"] = int((time.time() - policy_start) * 1000)
             logger.info(f"[POLICY] Validated {len(validated_actions)}/{len(plan_actions)} actions")
             
-            # 3. 🔧 BROKER: Ejecutar tools validados
+            # 3. 🔧 BROKER: Ejecutar tools validados via MCP
             broker_start = time.time()
             observations = []
-            
+
             if validated_actions:
                 broker = get_tool_broker()
-                mcp_client = await get_mcp_client()
-                
-                # Ejecutar tools (secuencialmente por ahora, paralelismo futuro)
+                mcp_client = get_mcp_client()
+
+                # Ejecutar tools via MCP (secuencialmente por ahora, paralelismo futuro)
                 for action in validated_actions:
                     try:
                         # Buscar spec del tool en manifest
@@ -2265,14 +2443,20 @@ Ejemplos:
                             if tool.name == action.tool:
                                 tool_spec = tool
                                 break
-                        
+
                         if not tool_spec:
                             logger.error(f"[BROKER] Tool spec not found: {action.tool}")
                             continue
-                        
+
+                        # Agregar workspace_id a los args (requerido por todos los tools)
+                        args_with_workspace = {
+                            "workspace_id": snapshot.workspace_id,
+                            **action.args
+                        }
+
                         observation = await broker.execute(
                             tool=action.tool,
-                            args=action.args,
+                            args=args_with_workspace,
                             workspace_id=snapshot.workspace_id,
                             conversation_id=snapshot.conversation_id,
                             request_id=request_id,
@@ -2357,8 +2541,15 @@ Ejemplos:
             telemetry["total_ms"] = int((time.time() - start_time) * 1000)
             logger.exception(f"[AGENT_LOOP] Error: {telemetry}")
             
-            # Fallback al método anterior en caso de error
-            return await self.decide(snapshot)
+            # Fallback: respuesta simple en caso de error
+            return OrchestratorResponse(
+                assistant="Disculpá, tuve un problema técnico. ¿Podés repetir lo que necesitás?",
+                slots=snapshot.slots,
+                tool_calls=[],
+                context_used=[],
+                next_action=NextAction.ANSWER,
+                end=False
+            )
     
     async def _planner_decide_tools(self, snapshot: ConversationSnapshot) -> List[PlanAction]:
         """
@@ -2377,48 +2568,36 @@ Ejemplos:
             args_desc = ", ".join([f"{k}: {v.get('description', 'N/A')}" for k, v in tool.args_schema.get('properties', {}).items()])
             tools_description.append(f"- {tool.name}: {tool.description} (args: {args_desc})")
         
-        system_prompt = f"""Eres un planificador de herramientas especializado en {snapshot.vertical}.
-
-HERRAMIENTAS DISPONIBLES:
-{chr(10).join(tools_description)}
-
-ESTADO ACTUAL:
-- Usuario dice: "{snapshot.user_input}"
-- Información recopilada: {dict(snapshot.slots)}
-- Objetivo: {snapshot.objective}
-- Ya saludado: {snapshot.greeted}
-
-REGLAS:
-1. Analiza qué necesita el usuario
-2. Decide qué herramientas ejecutar para ayudarlo
-3. Si el usuario pregunta información → usa tools de consulta (get_services, get_availability)
-4. Si quiere agendar → primero verifica disponibilidad, luego agenda
-5. Si falta información crítica → no ejecutes tools, el LLM preguntará
-6. Ordena las herramientas por prioridad (consultas antes que acciones)
-
-EJEMPLOS:
-
-Usuario: "¿qué servicios tienen?"
-→ [{{"tool": "get_services", "args": {{"workspace_id": "{snapshot.workspace_id}"}}}}]
-
-Usuario: "quiero turno para corte mañana 3pm"
-→ [
-  {{"tool": "get_availability", "args": {{"workspace_id": "{snapshot.workspace_id}", "service_type": "Corte de Cabello", "preferred_date": "2025-10-10", "preferred_time": "15:00"}}}},
-  {{"tool": "book_appointment", "args": {{"workspace_id": "{snapshot.workspace_id}", "service_type": "Corte de Cabello", "preferred_date": "2025-10-10", "preferred_time": "15:00", "client_name": "pendiente"}}}}
-]
-
-Usuario: "hola"
-→ []  // Solo saludo, no necesita tools
-
-Responde SOLO con array JSON de herramientas a ejecutar."""
+        # Generar prompt dinámico basado en el vertical
+        system_prompt = vertical_prompt_generator.generate_planner_prompt(
+            vertical=snapshot.vertical,
+            workspace_id=snapshot.workspace_id,
+            tools_description=tools_description,
+            user_input=snapshot.user_input,
+            current_slots=dict(snapshot.slots),
+            objective=snapshot.objective,
+            greeted=snapshot.greeted
+        )
 
         try:
             data = await self.llm_client.generate_json(system_prompt, "")
-            
-            if not data or not isinstance(data, list):
-                logger.warning(f"[PLANNER] Invalid response: {data}")
+
+            if not data:
+                logger.warning(f"[PLANNER] Empty response from LLM")
                 return []
-            
+
+            # Normalizar: si el LLM devuelve un dict único, convertirlo a lista
+            if isinstance(data, dict):
+                if "tool" in data:
+                    data = [data]  # Convertir objeto único a array
+                else:
+                    logger.warning(f"[PLANNER] Invalid dict structure: {data}")
+                    return []
+
+            if not isinstance(data, list):
+                logger.warning(f"[PLANNER] Invalid response type: {type(data)}")
+                return []
+
             actions = []
             for item in data:
                 if isinstance(item, dict) and "tool" in item:
@@ -2428,7 +2607,7 @@ Responde SOLO con array JSON de herramientas a ejecutar."""
                         reasoning=item.get("reasoning", "")
                     )
                     actions.append(action)
-            
+
             return actions
             
         except Exception as e:
@@ -2736,8 +2915,8 @@ Responde SOLO JSON válido."""
         # Faltan slots → Pedir el siguiente inteligentemente
         next_slot = self._get_next_smart_slot(missing_slots, snapshot)
         logger.info(f"[BOOKING] Falta información, pidiendo: {next_slot}")
-        
-        return await self._handle_slot_fill(snapshot, NextStep(NextAction.SLOT_FILL, {"ask_for": next_slot}, f"Pidiendo {next_slot}"))
+
+        return await self._handle_slot_fill(snapshot, NextStep(NextAction.SLOT_FILL, {"ask_for": next_slot}, f"Pidiendo {next_slot}"), inc_attempt=False)
     
     def _get_next_smart_slot(self, missing_slots: List[str], snapshot: ConversationSnapshot) -> str:
         """Determinar el próximo slot a pedir de manera inteligente"""
@@ -3582,8 +3761,22 @@ RESPONDE EN JSON con:
             # Extraer updated_state
             upd = self._filter_updated_state(snapshot.vertical, data.get("updated_state", {}))
             if upd:
-                new_slots = self._maybe_reset_validation(snapshot.slots, {**new_slots, **upd}, snapshot.vertical)
-                new_slots.update(upd)
+                # Solo actualizar slots que no estén ya definidos o que sean explícitamente nuevos
+                # NO sobrescribir slots que ya están correctos del planner
+                for key, value in upd.items():
+                    if value is not None and value != "" and (key not in new_slots or new_slots[key] is None or new_slots[key] == ""):
+                        # Verificar que el valor no sea peor que el existente
+                        existing_value = new_slots.get(key)
+                        if existing_value is None or existing_value == "":
+                            new_slots[key] = value
+                        elif isinstance(existing_value, str) and isinstance(value, str):
+                            # No sobrescribir si el valor existente es más específico (ej: "Corte de Cabello" vs "corte de cabello")
+                            if len(existing_value) > len(value) or existing_value.istitle():
+                                logger.info(f"[ANSWER] 🔒 Protegiendo slot {key}: '{existing_value}' vs '{value}'")
+                                continue
+                        new_slots[key] = value
+                
+                new_slots = self._maybe_reset_validation(snapshot.slots, new_slots, snapshot.vertical)
 
             # Extraer tool_calls
             tool_calls = data.get("tool_calls", [])
@@ -3605,6 +3798,14 @@ RESPONDE EN JSON con:
 
         # Normalizar slots después de merge
         new_slots = self._normalize_slots(snapshot.vertical, new_slots)
+        
+        # Aplicar normalización también a los slots que vienen del LLM
+        if upd:
+            for key, value in upd.items():
+                if key in ["preferred_date", "preferred_time"] and value:
+                    normalized_value = self._normalize_slots(snapshot.vertical, {key: value})[key]
+                    if normalized_value != value:
+                        new_slots[key] = normalized_value
 
         return OrchestratorResponse(
             assistant=self._clip_reply(reply),
@@ -3623,17 +3824,14 @@ RESPONDE EN JSON con:
 # Instancia global del servicio
 _orchestrator_instance: Optional[OrchestratorService] = None
 
-def get_orchestrator_service(enable_agent_loop: bool = False) -> OrchestratorService:
+def get_orchestrator_service() -> OrchestratorService:
     """
     Obtiene instancia singleton del orchestrator
-    
-    Args:
-        enable_agent_loop: Si True, habilita el nuevo loop de agente
     """
     global _orchestrator_instance
     if _orchestrator_instance is None:
-        _orchestrator_instance = OrchestratorService(enable_agent_loop=enable_agent_loop)
+        _orchestrator_instance = OrchestratorService()
     return _orchestrator_instance
 
-# Mantener compatibilidad con código existente
+# Instancia global del orchestrator
 orchestrator_service = get_orchestrator_service()

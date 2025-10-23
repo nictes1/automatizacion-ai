@@ -74,7 +74,7 @@ INSERT INTO pulpo.workspace_members (workspace_id, user_id, role) VALUES
 
 INSERT INTO pulpo.channels (workspace_id, type, name, config, is_active) VALUES
   ('550e8400-e29b-41d4-a716-446655440001', 'whatsapp', 'WhatsApp Principal',
-   '{"business_phone_id": "123456789", "display_phone": "+5491111111111"}'::jsonb, true),
+   '{"business_phone_id": "123456789", "display_phone": "+14155238886"}'::jsonb, true),
   ('550e8400-e29b-41d4-a716-446655440002', 'whatsapp', 'WhatsApp Consultas',
    '{"business_phone_id": "123456790", "display_phone": "+5492222222222"}'::jsonb, true),
   ('550e8400-e29b-41d4-a716-446655440003', 'whatsapp', 'WhatsApp Turnos',

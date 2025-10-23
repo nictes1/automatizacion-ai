@@ -468,3 +468,15 @@ class DashboardDataProvider:
 
 # Instancia global
 dashboard_provider = DashboardDataProvider()
+
+
+# ==========================================
+# FUNCIÓN PARA EXPORTAR MÉTRICAS PROMETHEUS
+# ==========================================
+
+def get_metrics_prometheus() -> str:
+    """
+    Exporta todas las métricas en formato Prometheus
+    """
+    from prometheus_client import generate_latest
+    return generate_latest(metrics_registry).decode('utf-8')
