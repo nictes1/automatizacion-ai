@@ -1,0 +1,197 @@
+version: '3.8'
+
+# ============================================================================
+# PULPO AI - MICROSERVICIOS POR VERTICAL
+# ============================================================================
+# Arquitectura de microservicios donde cada vertical es un agente independiente
+#
+# Servicios incluidos:
+# - api-gateway: Router principal que enruta por vertical
+# - peluqueria-agent: Microservicio específico para peluquerías
+# - abogacia-agent: Microservicio específico para bufetes (futuro)
+# - restaurante-agent: Microservicio específico para restaurantes (futuro)
+# - postgres: Base de datos compartida
+# - redis: Cache compartido
+# ============================================================================
+
+services:
+  # ==========================================================================
+  # BASE DE DATOS - PostgreSQL 15 con pgvector
+  # ==========================================================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: pulpo-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: pulpo
+      POSTGRES_USER: pulpo
+      POSTGRES_PASSWORD: pulpo
+      POSTGRES_INITDB_ARGS: "-c shared_buffers=256MB -c max_connections=200"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+      - ./database/migrations:/docker-entrypoint-initdb.d/migrations:ro
+    networks:
+      - pulpo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pulpo -d pulpo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ==========================================================================
+  # REDIS - Cache y gestión de sesiones
+  # ==========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: pulpo-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - pulpo-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================================================
+  # API GATEWAY - Router principal
+  # ==========================================================================
+  api-gateway:
+    build: ./api-gateway
+    container_name: pulpo-api-gateway
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://pulpo:pulpo@postgres:5432/pulpo
+      - REDIS_URL=redis://redis:6379/1
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - pulpo-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==========================================================================
+  # OLLAMA - LLM local para AI
+  # ==========================================================================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: pulpo-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - pulpo-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ==========================================================================
+  # PELUQUERÍA AGENT - Microservicio específico
+  # ==========================================================================
+  peluqueria-agent:
+    build: ./microservices/peluqueria-agent
+    container_name: pulpo-peluqueria-agent
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      - VERTICAL=peluqueria
+      - DATABASE_URL=postgresql://pulpo:pulpo@postgres:5432/pulpo
+      - REDIS_URL=redis://redis:6379/1
+      - OLLAMA_URL=http://ollama:11434
+      - MODEL_NAME=llama3.2:3b
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    networks:
+      - pulpo-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==========================================================================
+  # ABOGACÍA AGENT - Microservicio específico (futuro)
+  # ==========================================================================
+  # abogacia-agent:
+  #   build: ./microservices/abogacia-agent
+  #   container_name: pulpo-abogacia-agent
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8002:8002"
+  #   environment:
+  #     - VERTICAL=abogacia
+  #     - DATABASE_URL=postgresql://pulpo:pulpo@postgres:5432/pulpo
+  #     - REDIS_URL=redis://redis:6379/1
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   networks:
+  #     - pulpo-network
+
+  # ==========================================================================
+  # RESTAURANTE AGENT - Microservicio específico (futuro)
+  # ==========================================================================
+  # restaurante-agent:
+  #   build: ./microservices/restaurante-agent
+  #   container_name: pulpo-restaurante-agent
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8003:8003"
+  #   environment:
+  #     - VERTICAL=restaurante
+  #     - DATABASE_URL=postgresql://pulpo:pulpo@postgres:5432/pulpo
+  #     - REDIS_URL=redis://redis:6379/1
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   networks:
+  #     - pulpo-network
+
+# ============================================================================
+# VOLUMES
+# ============================================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  ollama_data:
+    driver: local
+
+# ============================================================================
+# NETWORKS
+# ============================================================================
+networks:
+  pulpo-network:
+    driver: bridge

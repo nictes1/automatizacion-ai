@@ -4,3 +4,6 @@ config.env
 config.env
 .env
 config.env
+microservices/peluqueria-agent/.venv/
+__pycache__/
+*.pyc
